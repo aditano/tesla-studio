@@ -1,0 +1,63 @@
+@import "tailwindcss";
+@theme {
+  --color-bg: #000000;
+  --color-fg: #f5f5f7;
+  --color-muted: #a1a1aa;
+  --color-subtle: #71717a;
+  --color-line: #ffffff;
+  --color-accent: #e82127;
+  --color-studio: #07080a;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --radius-pill: 999px;
+  --radius-panel: 1.5rem;
+  --radius-chip: 0.875rem;
+}
+
+@layer base {
+  html,
+  body,
+  #app,
+  #root {
+    height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@utility glass {
+  background: rgb(10 10 12 / 0.42);
+  backdrop-filter: blur(28px) saturate(1.45);
+  -webkit-backdrop-filter: blur(28px) saturate(1.45);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    0 12px 40px rgb(0 0 0 / 0.35);
+}
+
+@utility glass-quiet {
+  background: rgb(8 8 10 / 0.28);
+  backdrop-filter: blur(20px) saturate(1.3);
+  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  border: 1px solid rgb(255 255 255 / 0.08);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
