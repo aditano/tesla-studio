@@ -15,9 +15,9 @@ const PART_LABEL: Record<PartId, string> = {
 
 export function Wordmark() {
   return (
-    <div className="pointer-events-none absolute top-5 left-5 z-20 hidden sm:block">
-      <p className="text-[0.7rem] font-medium tracking-[0.42em] text-fg/90">TESLA</p>
-      <p className="mt-1 text-[0.62rem] tracking-[0.28em] text-subtle">STUDIO</p>
+    <div className="pointer-events-none absolute top-5 left-5 z-20 hidden md:block">
+      <p className="text-xs font-medium tracking-brand text-fg/90">TESLA</p>
+      <p className="mt-1 text-2xs tracking-label text-subtle">STUDIO</p>
     </div>
   );
 }
@@ -32,7 +32,7 @@ export function ResetButton() {
         reset();
         setAutoRotate(true);
       }}
-      className="glass pointer-events-auto absolute top-4 right-4 z-20 flex size-11 items-center justify-center rounded-full text-fg"
+      className="glass pointer-events-auto absolute top-4 right-4 z-20 hidden size-11 items-center justify-center rounded-full text-fg md:flex"
       aria-label="Reset view"
     >
       <RotateCcw className="size-4" strokeWidth={1.75} />
@@ -59,7 +59,7 @@ export function Hint() {
 
 export function Disclaimer() {
   return (
-    <p className="pointer-events-none absolute bottom-2 left-1/2 z-10 hidden w-[min(90vw,36rem)] -translate-x-1/2 text-center text-[0.6rem] tracking-wide text-subtle/80 md:block">
+    <p className="pointer-events-none absolute bottom-2 left-1/2 z-10 hidden w-full max-w-xl -translate-x-1/2 text-center text-2xs tracking-wide text-subtle/80 md:block">
       Unofficial visualization. Tesla and model names are trademarks of Tesla, Inc.
     </p>
   );

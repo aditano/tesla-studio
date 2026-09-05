@@ -22,16 +22,16 @@ export function FeatureDock() {
   };
 
   return (
-    <aside className="pointer-events-auto absolute top-20 right-3 left-3 z-20 md:top-auto md:right-auto md:bottom-4 md:left-4 md:w-[18rem]">
-      <div className="glass rounded-panel p-2 md:p-3">
-        <p className="hidden px-2 pb-2 text-[0.65rem] font-medium tracking-[0.22em] text-subtle uppercase md:block">
+    <aside className="pointer-events-auto absolute bottom-4 left-4 z-20 hidden w-72 md:block">
+      <div className="glass rounded-panel p-3">
+        <p className="px-2 pb-2 text-2xs font-medium tracking-label text-subtle uppercase">
           Features
         </p>
-        <ul className="flex gap-1 overflow-x-auto md:flex-col">
+        <ul className="flex flex-col gap-1">
           {def.features.map((f) => {
             const active = feature === f.id;
             return (
-              <li key={f.id} className="shrink-0 md:shrink">
+              <li key={f.id}>
                 <button
                   type="button"
                   onClick={() => onClick(f.id)}
@@ -41,7 +41,7 @@ export function FeatureDock() {
                   }
                 >
                   <span className="text-sm font-medium whitespace-nowrap">{f.label}</span>
-                  <span className={"ml-3 hidden text-xs md:inline " + (active ? "text-bg/70" : "text-subtle")}>
+                  <span className={"ml-3 text-xs " + (active ? "text-bg/70" : "text-subtle")}>
                     {f.hint}
                   </span>
                 </button>

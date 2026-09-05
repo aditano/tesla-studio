@@ -12,18 +12,18 @@ export function ConfigDock() {
   const def = vehicleById(modelId);
 
   return (
-    <aside className="pointer-events-auto absolute right-3 bottom-3 left-3 z-20 md:left-auto md:w-[20rem]">
-      <div className="glass rounded-panel p-3 md:p-4">
+    <aside className="pointer-events-auto absolute right-4 bottom-4 z-20 hidden w-80 md:block">
+      <div className="glass rounded-panel p-4">
         <div className="flex items-end justify-between gap-3">
           <div>
-            <p className="text-[0.65rem] font-medium tracking-[0.22em] text-subtle uppercase">
+            <p className="text-2xs font-medium tracking-label text-subtle uppercase">
               {def.tag}
             </p>
-            <h2 className="text-lg font-medium tracking-tight text-fg md:text-xl">{def.name}</h2>
+            <h2 className="text-xl font-medium tracking-tight text-fg">{def.name}</h2>
           </div>
         </div>
 
-        <div className="mt-3 flex gap-1.5 overflow-x-auto md:mt-4 md:flex-col">
+        <div className="mt-4 flex flex-col gap-1.5">
           {def.variants.map((v) => {
             const active = v.id === variantId;
             return (
@@ -32,12 +32,12 @@ export function ConfigDock() {
                 type="button"
                 onClick={() => setVariant(v.id)}
                 className={
-                  "flex min-h-11 shrink-0 items-center justify-between rounded-chip px-3 py-2 text-left transition-colors duration-200 " +
+                  "flex min-h-11 items-center justify-between rounded-chip px-3 py-2 text-left transition-colors duration-200 " +
                   (active ? "bg-fg text-bg" : "text-fg hover:bg-line/10")
                 }
               >
                 <span className="text-sm font-medium whitespace-nowrap">{v.name}</span>
-                <span className={"ml-3 hidden text-xs md:inline " + (active ? "text-bg/70" : "text-subtle")}>
+                <span className={"ml-3 text-xs " + (active ? "text-bg/70" : "text-subtle")}>
                   {v.subtitle}
                 </span>
               </button>
@@ -45,7 +45,7 @@ export function ConfigDock() {
           })}
         </div>
 
-        <p className="mt-3 text-[0.65rem] font-medium tracking-[0.22em] text-subtle uppercase md:mt-5">
+        <p className="mt-5 text-2xs font-medium tracking-label text-subtle uppercase">
           Exterior
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
@@ -71,7 +71,7 @@ export function ConfigDock() {
           {def.exteriors.find((p) => p.id === exteriorId)?.name}
         </p>
 
-        <p className="mt-3 text-[0.65rem] font-medium tracking-[0.22em] text-subtle uppercase md:mt-4">
+        <p className="mt-4 text-2xs font-medium tracking-label text-subtle uppercase">
           Interior
         </p>
         <div className="mt-2 flex flex-wrap gap-2">

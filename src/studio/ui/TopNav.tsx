@@ -7,7 +7,7 @@ export function TopNav() {
 
   return (
     <nav
-      className="pointer-events-auto glass absolute top-4 left-1/2 z-20 flex w-[min(92vw,40rem)] -translate-x-1/2 items-center justify-center gap-1 rounded-pill p-1.5"
+      className="pointer-events-auto glass absolute top-4 left-1/2 z-20 hidden w-full max-w-xl -translate-x-1/2 items-center justify-center gap-1 rounded-pill p-1.5 md:flex"
       aria-label="Vehicle"
     >
       {VEHICLES.map((v) => {
