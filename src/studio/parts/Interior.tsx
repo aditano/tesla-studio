@@ -1,35 +1,52 @@
+import { RoundedBox } from "@react-three/drei";
 import type { Interior } from "../catalog";
 import { useInteriorMats } from "../materials";
-
 function Seat({
-  position,
-  rotation = [0, 0, 0],
-  wide = 0.48,
+  x,
+  z,
+  width = 0.48,
   leather,
 }: {
-  position: [number, number, number];
-  rotation?: [number, number, number];
-  wide?: number;
+  x: number;
+  z: number;
+  width?: number;
   leather: ReturnType<typeof useInteriorMats>["leather"];
 }) {
   return (
-    <group position={position} rotation={rotation}>
-      <mesh position={[0, 0.18, 0]} material={leather} castShadow>
-        <boxGeometry args={[wide, 0.12, 0.46]} />
-      </mesh>
-      <mesh position={[0, 0.42, 0.18]} material={leather} castShadow>
-        <boxGeometry args={[wide, 0.52, 0.1]} />
-      </mesh>
-      <mesh position={[-wide * 0.42, 0.32, 0]} material={leather}>
-        <boxGeometry args={[0.08, 0.22, 0.4]} />
-      </mesh>
-      <mesh position={[wide * 0.42, 0.32, 0]} material={leather}>
-        <boxGeometry args={[0.08, 0.22, 0.4]} />
-      </mesh>
+    <group position={[x, 0.2, z]}>
+      <RoundedBox
+        args={[width, 0.12, 0.46]}
+        radius={0.045}
+        position={[0, 0.14, 0]}
+        material={leather}
+        castShadow
+      />
+      <RoundedBox
+        args={[width * 0.94, 0.5, 0.12]}
+        radius={0.05}
+        position={[0, 0.43, 0.17]}
+        rotation={[-0.13, 0, 0]}
+        material={leather}
+        castShadow
+      />
+      <RoundedBox
+        args={[width * 0.6, 0.18, 0.12]}
+        radius={0.045}
+        position={[0, 0.74, 0.2]}
+        material={leather}
+      />
+      {[-1, 1].map((s) => (
+        <RoundedBox
+          key={s}
+          args={[0.065, 0.2, 0.4]}
+          radius={0.027}
+          position={[s * width * 0.43, 0.22, 0]}
+          material={leather}
+        />
+      ))}
     </group>
   );
 }
-
 export function Cabin({
   interior,
   width,
@@ -39,61 +56,88 @@ export function Cabin({
   width: number;
   kind: "sedan" | "crossover" | "truck" | "cab";
 }) {
-  const mats = useInteriorMats(interior);
-  const cabinZ = kind === "truck" ? -0.35 : kind === "cab" ? 0.05 : 0.15;
-  const floorW = width * 0.72;
-  const floorL = kind === "cab" ? 1.6 : 2.2;
-  const hasRear = kind !== "cab";
-  const hasWheel = kind !== "cab";
-
+  const mats = useInteriorMats(interior),
+    cab = kind === "cab",
+    truck = kind === "truck";
   return (
-    <group position={[0, 0.15, cabinZ]}>
-      <mesh position={[0, 0.02, 0]} material={mats.dash} receiveShadow>
-        <boxGeometry args={[floorW, 0.04, floorL]} />
-      </mesh>
-      <Seat position={[-floorW * 0.22, 0.08, kind === "cab" ? 0.05 : -0.35]} leather={mats.leather} />
-      <Seat position={[floorW * 0.22, 0.08, kind === "cab" ? 0.05 : -0.35]} leather={mats.leather} />
-      {hasRear ? (
-        <Seat
-          position={[0, 0.08, 0.55]}
-          wide={floorW * 0.72}
-          leather={mats.leather}
-        />
-      ) : null}
-      <mesh
-        position={[0, 0.42, kind === "cab" ? -0.55 : -0.95]}
+    <group
+      position={[
+        0,
+        kind === "truck" ? 0.24 : kind === "crossover" ? 0.12 : 0,
+        truck ? -0.22 : 0,
+      ]}
+    >
+      <RoundedBox
+        args={[width * 0.77, 0.06, 2.1]}
+        radius={0.025}
+        position={[0, 0.22, 0.15]}
+        material={mats.plastic}
+      />
+      <Seat x={-0.4} z={-0.2} leather={mats.leather} />
+      <Seat x={0.4} z={-0.2} leather={mats.leather} />
+      {!cab && (
+        <Seat x={0} z={0.78} width={width * 0.69} leather={mats.leather} />
+      )}
+      <RoundedBox
+        args={[width * 0.78, 0.16, 0.31]}
+        radius={0.055}
+        position={[0, 0.83, -0.89]}
         material={mats.dash}
-        castShadow
+      />
+      <RoundedBox
+        args={[width * 0.78, 0.018, 0.065]}
+        radius={0.007}
+        position={[0, 0.84, -0.72]}
       >
-        <boxGeometry args={[floorW * 0.92, 0.28, 0.28]} />
-      </mesh>
-      <mesh
-        position={[0.12, 0.52, kind === "cab" ? -0.42 : -0.82]}
-        rotation={[-0.35, 0, 0]}
-      >
-        <planeGeometry args={[kind === "truck" ? 0.48 : 0.38, 0.24]} />
         <meshStandardMaterial
-          color="#0b1220"
-          emissive="#7eb6ff"
-          emissiveIntensity={0.45}
-          roughness={0.2}
+          color={cab ? "#c3a371" : "#777067"}
+          roughness={0.7}
+        />
+      </RoundedBox>
+      <RoundedBox
+        args={[cab ? 0.47 : 0.37, 0.245, 0.025]}
+        radius={0.009}
+        position={[0.05, 0.94, -0.71]}
+        rotation={[-0.13, 0, 0]}
+        material={mats.plastic}
+      />
+      <mesh position={[0.05, 0.945, -0.691]} rotation={[-0.13, 0, 0]}>
+        <planeGeometry args={[cab ? 0.44 : 0.345, 0.22]} />
+        <meshStandardMaterial
+          color="#dbe2e6"
+          emissive="#bdc8d4"
+          emissiveIntensity={0.15}
         />
       </mesh>
-      {hasWheel ? (
-        <group position={[0.32, 0.55, kind === "truck" ? -0.72 : -0.78]}>
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.16, 0.018, 8, 24]} />
-            <meshStandardMaterial color="#1a1a1c" roughness={0.5} />
+      <mesh position={[-0.027, 0.945, -0.687]} rotation={[-0.13, 0, 0]}>
+        <planeGeometry args={[0.002, 0.19]} />
+        <meshBasicMaterial color="#9aaab8" />
+      </mesh>
+      <RoundedBox
+        args={[0.25, 0.19, 0.65]}
+        radius={0.04}
+        position={[0, 0.46, -0.12]}
+        material={mats.plastic}
+      />
+      {!cab && (
+        <group position={[-0.42, 0.91, -0.58]} rotation={[0.25, 0, 0]}>
+          <mesh>
+            <torusGeometry args={[0.15, 0.017, 12, 48]} />
+            <meshStandardMaterial color="#15191d" roughness={0.65} />
           </mesh>
+          <RoundedBox
+            args={[0.19, 0.045, 0.045]}
+            radius={0.015}
+            material={mats.plastic}
+          />
+          <RoundedBox
+            args={[0.045, 0.13, 0.04]}
+            radius={0.012}
+            position={[0, -0.055, 0]}
+            material={mats.plastic}
+          />
         </group>
-      ) : null}
-      <mesh position={[0, 0.28, kind === "cab" ? 0.1 : -0.15]} material={mats.plastic}>
-        <boxGeometry args={[0.32, 0.22, 0.7]} />
-      </mesh>
-      <mesh position={[0, 0.72, 0.1]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.01, 0.01, floorW * 0.8, 8]} />
-        <meshStandardMaterial color="#cfe8ff" emissive="#9fd2ff" emissiveIntensity={0.6} />
-      </mesh>
+      )}
     </group>
   );
 }

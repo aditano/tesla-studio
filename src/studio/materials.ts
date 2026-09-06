@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import type { Finish, Interior, Paint } from "./catalog";
 
@@ -69,7 +69,7 @@ export function paintParams(paint: Paint) {
 
 export function usePaintMaterial(paint: Paint) {
   const p = paintParams(paint);
-  return useMemo(
+  const material = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
         color: p.color,
@@ -83,12 +83,24 @@ export function usePaintMaterial(paint: Paint) {
         sheenColor: new THREE.Color(p.sheenColor),
         reflectivity: 0.9,
       }),
-    [p.color, p.metalness, p.roughness, p.clearcoat, p.clearcoatRoughness, p.envMapIntensity, p.sheen, p.sheenRoughness, p.sheenColor],
+    [
+      p.color,
+      p.metalness,
+      p.roughness,
+      p.clearcoat,
+      p.clearcoatRoughness,
+      p.envMapIntensity,
+      p.sheen,
+      p.sheenRoughness,
+      p.sheenColor,
+    ],
   );
+  useEffect(() => () => material.dispose(), [material]);
+  return material;
 }
 
 export function useGlassMaterial(tint = "#8fb4c8", opacity = 0.28) {
-  return useMemo(
+  const material = useMemo(
     () =>
       new THREE.MeshPhysicalMaterial({
         color: tint,
@@ -104,10 +116,12 @@ export function useGlassMaterial(tint = "#8fb4c8", opacity = 0.28) {
       }),
     [tint, opacity],
   );
+  useEffect(() => () => material.dispose(), [material]);
+  return material;
 }
 
 export function useInteriorMats(interior: Interior) {
-  return useMemo(() => {
+  const materials = useMemo(() => {
     const leather = new THREE.MeshPhysicalMaterial({
       color: interior.leather,
       roughness: 0.62,
@@ -128,6 +142,11 @@ export function useInteriorMats(interior: Interior) {
     });
     return { leather, dash, plastic };
   }, [interior.dash, interior.leather, interior.stitch]);
+  useEffect(
+    () => () => Object.values(materials).forEach((m) => m.dispose()),
+    [materials],
+  );
+  return materials;
 }
 
 export const chrome = new THREE.MeshPhysicalMaterial({

@@ -2,12 +2,20 @@ import { create } from "zustand";
 import {
   EMPTY_OPEN,
   vehicleById,
+  featuresForVehicle,
   type FeatureId,
   type ModelId,
   type PartId,
 } from "./catalog";
 
 type StudioState = {
+  environment: "studio" | "daylight" | "midnight";
+  quality: "auto" | "high";
+  cameraRevision: number;
+  demoFeature: FeatureId | null;
+  setDemoFeature: (id: FeatureId | null) => void;
+  setEnvironment: (id: "studio" | "daylight" | "midnight") => void;
+  setQuality: (id: "auto" | "high") => void;
   modelId: ModelId;
   variantId: string;
   exteriorId: string;
@@ -35,14 +43,21 @@ type StudioState = {
 };
 
 export const useStudio = create<StudioState>((set, get) => ({
-  modelId: "model-y",
+  environment: "studio",
+  quality: "auto",
+  cameraRevision: 0,
+  demoFeature: null,
+  setDemoFeature: (demoFeature) => set({ demoFeature }),
+  setEnvironment: (environment) => set({ environment }),
+  setQuality: (quality) => set({ quality }),
+  modelId: "model-3-heritage",
   variantId: "lr",
-  exteriorId: "stealth-grey",
+  exteriorId: "ultra-red",
   interiorId: "black",
   open: { ...EMPTY_OPEN },
   feature: null,
   hoverPart: null,
-  autoRotate: true,
+  autoRotate: false,
   ride: 0,
   lightsOn: true,
   lightBarOn: true,
@@ -54,6 +69,8 @@ export const useStudio = create<StudioState>((set, get) => ({
       v.interiors.find((p) => p.id === get().interiorId) ?? v.interiors[0];
     set({
       modelId: id,
+      demoFeature: null,
+      cameraRevision: get().cameraRevision + 1,
       variantId: v.variants[0].id,
       exteriorId: paint.id,
       interiorId: interior.id,
@@ -64,13 +81,40 @@ export const useStudio = create<StudioState>((set, get) => ({
       lightBarOn: true,
     });
   },
-  setVariant: (id) => set({ variantId: id }),
-  setExterior: (id) => set({ exteriorId: id }),
-  setInterior: (id) => set({ interiorId: id }),
-  togglePart: (id) =>
-    set((s) => ({ open: { ...s.open, [id]: !s.open[id] } })),
+  setVariant: (id) => {
+    const def = vehicleById(get().modelId);
+    if (!def.variants.some((v) => v.id === id)) return;
+    const feature = get().feature;
+    if (feature && !featuresForVehicle(def, id).some((f) => f.id === feature))
+      get().resetPose();
+    set({ variantId: id });
+  },
+  setExterior: (id) => {
+    if (vehicleById(get().modelId).exteriors.some((p) => p.id === id))
+      set({ exteriorId: id });
+  },
+  setInterior: (id) => {
+    if (vehicleById(get().modelId).interiors.some((p) => p.id === id))
+      set({ interiorId: id });
+  },
+  togglePart: (id) => set((s) => ({ open: { ...s.open, [id]: !s.open[id] } })),
   setOpen: (id, value) => set((s) => ({ open: { ...s.open, [id]: value } })),
-  setFeature: (id) => set({ feature: id }),
+  setFeature: (id) => {
+    if (
+      id &&
+      !featuresForVehicle(vehicleById(get().modelId), get().variantId).some(
+        (f) => f.id === id,
+      )
+    )
+      return;
+    set({
+      feature: id,
+      demoFeature: null,
+      open: { ...EMPTY_OPEN },
+      autoRotate: false,
+      cameraRevision: get().cameraRevision + 1,
+    });
+  },
   setHover: (id) => set({ hoverPart: id }),
   setAutoRotate: (v) => set({ autoRotate: v }),
   setRide: (v) => set({ ride: v }),
@@ -80,7 +124,9 @@ export const useStudio = create<StudioState>((set, get) => ({
     set({
       open: { ...EMPTY_OPEN },
       feature: null,
+      demoFeature: null,
+      cameraRevision: get().cameraRevision + 1,
       ride: 0,
-      autoRotate: true,
+      autoRotate: false,
     }),
 }));

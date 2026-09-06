@@ -1,119 +1,143 @@
 import type { WheelStyle } from "../catalog";
-
-type WheelProps = {
+function Wheel({
+  style,
+  radius,
+  caliper,
+  x,
+  z,
+}: {
   style: WheelStyle;
   radius: number;
   caliper: string;
   x: number;
   z: number;
-};
-
-function Rim({ style, radius }: { style: WheelStyle; radius: number }) {
-  const rimR = radius * 0.62;
-  const spokes =
-    style === "helix" ? 7 : style === "sport" ? 10 : style === "cyber" ? 6 : style === "nova" ? 10 : 8;
-
-  if (style === "aero" || style === "photon") {
-    return (
-      <group>
-        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[rimR, rimR, 0.09, 48]} />
-          <meshPhysicalMaterial color="#c9cdd2" metalness={0.95} roughness={0.22} />
+}) {
+  const side = Math.sign(x),
+    rim = radius * (style === "sport" || style === "helix" ? 0.76 : 0.7),
+    aero = style === "aero" || style === "photon",
+    n = style === "cyber" ? 7 : style === "helix" ? 7 : aero ? 5 : 10;
+  return (
+    <group position={[x, radius, z]}>
+      <mesh rotation={[0, Math.PI / 2, 0]} castShadow>
+        <torusGeometry args={[radius * 0.83, radius * 0.17, 20, 64]} />
+        <meshStandardMaterial color="#171a1e" roughness={0.87} />
+      </mesh>
+      {[-0.075, 0.075].map((offset) => (
+        <mesh
+          key={offset}
+          position={[offset, 0, 0]}
+          rotation={[0, Math.PI / 2, 0]}
+        >
+          <torusGeometry args={[radius * 0.83, radius * 0.065, 12, 64]} />
+          <meshStandardMaterial color="#121519" roughness={0.9} />
         </mesh>
-        {Array.from({ length: style === "aero" ? 4 : 12 }).map((_, i) => {
-          const a = (i / (style === "aero" ? 4 : 12)) * Math.PI * 2;
+      ))}
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[rim * 0.88, rim * 0.88, 0.12, 64]} />
+        <meshStandardMaterial
+          color="#181b20"
+          roughness={0.6}
+          metalness={0.35}
+        />
+      </mesh>
+      <mesh rotation={[0, 0, Math.PI / 2]} position={[side * 0.085, 0, 0]}>
+        <cylinderGeometry args={[rim * 0.83, rim * 0.83, 0.016, 64]} />
+        <meshStandardMaterial
+          color="#72777c"
+          metalness={0.86}
+          roughness={0.42}
+        />
+      </mesh>
+      <mesh position={[side * 0.096, 0, -rim * 0.68]}>
+        <boxGeometry args={[0.035, 0.14, 0.065]} />
+        <meshPhysicalMaterial
+          color={caliper}
+          metalness={0.3}
+          roughness={0.32}
+        />
+      </mesh>
+      <group position={[side * 0.115, 0, 0]}>
+        <mesh rotation={[0, Math.PI / 2, 0]}>
+          <torusGeometry args={[rim, 0.012, 10, 64]} />
+          <meshPhysicalMaterial
+            color="#8c949d"
+            metalness={1}
+            roughness={0.22}
+          />
+        </mesh>
+        {Array.from({ length: n }, (_, i) => {
+          const a = (i / n) * Math.PI * 2;
           return (
-            <mesh
-              key={i}
-              position={[0, Math.sin(a) * rimR * 0.55, Math.cos(a) * rimR * 0.55]}
-              rotation={[a, 0, 0]}
-            >
-              <boxGeometry args={[0.02, 0.018, style === "aero" ? 0.07 : 0.045]} />
-              <meshStandardMaterial color="#111" metalness={0.4} roughness={0.4} />
-            </mesh>
+            <group key={i} rotation={[a, 0, 0]}>
+              <mesh
+                position={[0, 0, rim * 0.52]}
+                rotation={[style === "helix" ? 0.25 : 0, 0, 0]}
+                castShadow
+              >
+                <boxGeometry args={[0.025, aero ? 0.092 : 0.025, rim * 0.92]} />
+                <meshPhysicalMaterial
+                  color={aero ? "#444b55" : "#a0a8b0"}
+                  metalness={0.92}
+                  roughness={0.25}
+                />
+              </mesh>
+              {!aero && (
+                <mesh
+                  position={[side * 0.003, 0.026, rim * 0.58]}
+                  rotation={[0.15, 0, 0]}
+                >
+                  <boxGeometry args={[0.02, 0.014, rim * 0.8]} />
+                  <meshPhysicalMaterial
+                    color="#5b636d"
+                    metalness={1}
+                    roughness={0.23}
+                  />
+                </mesh>
+              )}
+            </group>
           );
         })}
         <mesh rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.08, 0.08, 0.1, 24]} />
-          <meshPhysicalMaterial color="#d8dce0" metalness={1} roughness={0.15} />
+          <cylinderGeometry args={[0.048, 0.048, 0.04, 32]} />
+          <meshPhysicalMaterial
+            color="#30363e"
+            metalness={0.8}
+            roughness={0.25}
+          />
         </mesh>
+        {Array.from({ length: 5 }, (_, i) => {
+          const a = (i / 5) * Math.PI * 2;
+          return (
+            <mesh
+              key={i}
+              position={[
+                side * 0.024,
+                Math.sin(a) * 0.035,
+                Math.cos(a) * 0.035,
+              ]}
+              rotation={[0, 0, Math.PI / 2]}
+            >
+              <cylinderGeometry args={[0.005, 0.005, 0.005, 6]} />
+              <meshStandardMaterial
+                color="#a4acb5"
+                metalness={1}
+                roughness={0.3}
+              />
+            </mesh>
+          );
+        })}
       </group>
-    );
-  }
-
-  if (style === "cyber") {
-    return (
-      <group>
-        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[rimR, rimR, 0.14, 6]} />
-          <meshPhysicalMaterial color="#b9bdc2" metalness={1} roughness={0.3} />
-        </mesh>
-        <mesh rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[rimR * 0.35, rimR * 0.35, 0.16, 6]} />
-          <meshStandardMaterial color="#1a1a1c" metalness={0.6} roughness={0.35} />
-        </mesh>
-      </group>
-    );
-  }
-
-  return (
-    <group>
-      <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
-        <cylinderGeometry args={[rimR, rimR, 0.08, 48]} />
-        <meshPhysicalMaterial color="#d0d4d8" metalness={0.95} roughness={0.18} />
-      </mesh>
-      {Array.from({ length: spokes }).map((_, i) => {
-        const a = (i / spokes) * Math.PI * 2 + (style === "helix" ? 0.18 : 0);
-        const len = rimR * 0.78;
-        return (
-          <mesh
-            key={i}
-            position={[0, Math.sin(a) * len * 0.42, Math.cos(a) * len * 0.42]}
-            rotation={[a + (style === "helix" ? 0.35 : 0), 0, 0]}
-            castShadow
-          >
-            <boxGeometry args={[0.045, style === "sport" ? 0.028 : 0.038, len]} />
-            <meshPhysicalMaterial color="#cfd3d8" metalness={0.96} roughness={0.16} />
-          </mesh>
-        );
-      })}
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.09, 0.09, 0.11, 24]} />
-        <meshPhysicalMaterial color="#e8eaee" metalness={1} roughness={0.12} />
-      </mesh>
     </group>
   );
 }
-
-export function Wheel({ style, radius, caliper, x, z }: WheelProps) {
-  const side = Math.sign(x) || 1;
-
-  return (
-    <group position={[x, radius, z]}>
-      <mesh rotation={[0, Math.PI / 2, 0]} castShadow receiveShadow>
-        <torusGeometry args={[radius * 0.78, radius * 0.22, 16, 48]} />
-        <meshStandardMaterial color="#0d0d0f" roughness={0.72} metalness={0.05} />
-      </mesh>
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[radius * 0.78, radius * 0.78, 0.2, 36]} />
-        <meshStandardMaterial color="#09090b" roughness={0.45} metalness={0.4} />
-      </mesh>
-      <group position={[side * 0.01, 0, 0]}>
-        <Rim style={style} radius={radius} />
-      </group>
-      <mesh position={[side * 0.07, 0, radius * 0.18]}>
-        <boxGeometry args={[0.05, 0.12, 0.16]} />
-        <meshStandardMaterial color={caliper} metalness={0.35} roughness={0.4} />
-      </mesh>
-      <mesh rotation={[0, 0, Math.PI / 2]} position={[side * 0.04, 0, 0]}>
-        <cylinderGeometry args={[radius * 0.5, radius * 0.5, 0.02, 36]} />
-        <meshStandardMaterial color="#6a6a70" metalness={0.7} roughness={0.35} />
-      </mesh>
-    </group>
-  );
-}
-
-export function WheelSet(props: {
+export function WheelSet({
+  style,
+  radius,
+  caliper,
+  track,
+  frontZ,
+  rearZ,
+}: {
   style: WheelStyle;
   radius: number;
   caliper: string;
@@ -121,13 +145,20 @@ export function WheelSet(props: {
   frontZ: number;
   rearZ: number;
 }) {
-  const { style, radius, caliper, track, frontZ, rearZ } = props;
   return (
     <group>
-      <Wheel style={style} radius={radius} caliper={caliper} x={track} z={frontZ} />
-      <Wheel style={style} radius={radius} caliper={caliper} x={-track} z={frontZ} />
-      <Wheel style={style} radius={radius} caliper={caliper} x={track} z={rearZ} />
-      <Wheel style={style} radius={radius} caliper={caliper} x={-track} z={rearZ} />
+      {[-track, track].flatMap((x) =>
+        [frontZ, rearZ].map((z) => (
+          <Wheel
+            key={`${x}-${z}`}
+            x={x}
+            z={z}
+            style={style}
+            radius={radius}
+            caliper={caliper}
+          />
+        )),
+      )}
     </group>
   );
 }
