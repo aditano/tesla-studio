@@ -530,7 +530,7 @@ export function Studio() {
         <span>
           {heritage
             ? "Artist-built mesh · Original-generation design"
-            : "Procedural design study"}
+            : "Original authored 3D asset"}
           <b> / </b>Unofficial Tesla visualization
         </span>
       </footer>
@@ -579,8 +579,8 @@ export function Studio() {
                 </p>
                 <p>
                   Heritage models use detailed artist-created geometry.
-                  Highland, Juniper, Cybertruck and Cybercab are procedural
-                  design studies. Trim treatments, paints and articulated panels
+                  Highland, Juniper, Cybertruck and Cybercab use original
+                  authored 3D assets with separate panels and fitted interiors. Trim treatments, paints and articulated panels
                   are illustrative, not factory CAD or a current ordering guide.
                 </p>
                 <p>

@@ -7,7 +7,7 @@ An independent, noncommercial browser vehicle studio with configurable finishes,
 ## Experience
 
 - Detailed artist-created original-generation Model 3 and Model S meshes, hosted in this repository.
-- Rebuilt procedural Highland, Juniper, Cybertruck and Cybercab design studies, including curved coachwork, separate glazing, open wheel arches, detailed wheels and cabin furnishings.
+- Original Highland, Juniper, Cybertruck and Cybercab GLB assets with separate fitted panels, glazing, detailed wheels and brakes, cabin furnishings and named animation hinges.
 - Model and trim selection, exterior colors, interior finishes, and trim-specific sport hardware.
 - Guided tours with eased camera moves followed by articulated demonstrations. Individual features can be selected, revisited, or exited.
 - Studio, daylight and midnight lighting with generated reflection environments, clearcoat materials, contact shadows, floor reflections and restrained postprocessing.
@@ -19,11 +19,11 @@ Drag to orbit; scroll or pinch to zoom. Select **Explore features** for an indiv
 
 ## Fidelity and scope
 
-This is a real-time WebGL showcase, **not an Unreal Engine renderer or a factory CAD configurator**. The original-generation artist meshes are the highest-detail vehicles. The newer cars are procedural interpretations and are explicitly labeled as design studies. Their proportions and component geometry still need production-quality authored assets to meet a genuinely photorealistic target.
+This is a real-time WebGL showcase, **not an Unreal Engine renderer or a factory CAD configurator**. The newer vehicles use original, reproducibly authored presentation meshes, with 118–162 thousand triangles and losslessly compressed GLBs of 2.1–2.6 MB each. These improve component detail and articulation, but remain interpretations rather than scanned or OEM CAD assets. Fine surface fidelity and physically accurate textures still limit photorealism. Cybercab proportions are estimated from reference imagery.
 
 Heritage vehicles retain their actual older-generation labels. They are not passed off as Highland, Juniper or Plaid. Trim treatments, colors and interior selections are illustrative rather than a current Tesla ordering guide. No live pricing, range or performance figures are fabricated.
 
-The imported static meshes have presentation rigs created by partitioning surface triangles into hinged groups. These are approximate demonstrations, not factory articulation meshes; panel seams and interior detail can show limitations at close range. The wheel and paint treatments are visualization choices, not guaranteed exact OEM option geometry.
+The heritage imported static meshes have presentation rigs created by partitioning surface triangles into hinged groups. These are approximate demonstrations, not factory articulation meshes; panel seams and interior detail can show limitations at close range. The wheel and paint treatments are visualization choices, not guaranteed exact OEM option geometry.
 
 ## Development
 
@@ -32,11 +32,13 @@ npm ci
 npm run dev
 npm test
 npm run build
+# Regenerate the four newer vehicle assets
+npm run assets:build
 ```
 
 The Vite base path remains `/tesla-studio/` for the existing GitHub Pages site. The rendering code is lazy-loaded separately from the interface. There are no remotely hosted HDR dependencies; the reflection environment is generated in Three.js. Imported meshes and their textures are served from `public/models/`. Google Fonts is optional, with local system-font fallback.
 
-`npm test` covers model/trim/feature selection, camera-shot coverage, state reset and invalid options, procedural geometry validity, and parsing the actual heritage asset buffers through Three.js. Textures are stubbed only during the headless geometry test, with file existence checked separately. These are structural tests, not GPU screenshot or browser interaction tests.
+`npm test` covers model/trim/feature selection, camera-shot coverage, state reset and invalid options, procedural geometry validity, parsing the actual heritage asset buffers through Three.js, and decoding all four compressed GLBs with the runtime loader, validating geometry budgets and hinge directions. Textures are stubbed only during the headless geometry test, with file existence checked separately. These are structural tests, not GPU screenshot or browser interaction tests.
 
 GitHub Actions runs a clean install, the tests, TypeScript and the production build, then publishes the result to the existing `gh-pages` branch on pushes to `main`.
 
@@ -47,7 +49,9 @@ GitHub Actions runs a clean install, the tests, TypeScript and the production bu
 - `src/studio/Studio.tsx`: responsive configurator and guided-tour orchestration.
 - `src/studio/scene/`: lighting, quality settings and deterministic camera shots.
 - `src/studio/vehicles/HeritageVehicle.tsx`: glTF normalization, material adaptation and demonstration rig.
-- `src/studio/vehicles/coachwork.ts`: curved procedural body and glass surfaces.
+- `src/studio/vehicles/AuthoredVehicle.tsx`: compressed GLB loading, configuration and named-part animation.
+- `scripts/assets/`: reproducible geometry authoring and lossless mesh compression.
+- `public/models/authored/`: newer vehicle GLBs, geometry manifest and reference notes.
 - `src/studio/vehicles/`: model-specific articulation and bodywork.
 
 ## Asset credits and license

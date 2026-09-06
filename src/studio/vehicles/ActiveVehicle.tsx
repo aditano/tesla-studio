@@ -1,9 +1,7 @@
 import { vehicleById } from "../catalog";
 import { useStudio } from "../store";
 import { HeritageVehicle } from "./HeritageVehicle";
-import { Cybercab } from "./Cybercab";
-import { Cybertruck } from "./Cybertruck";
-import { PassengerCar } from "./PassengerCar";
+import { AuthoredVehicle } from "./AuthoredVehicle";
 
 export function ActiveVehicle() {
   const modelId = useStudio((s) => s.modelId);
@@ -28,18 +26,5 @@ export function ActiveVehicle() {
       />
     );
 
-  if (modelId === "model-3" || modelId === "model-y") {
-    return (
-      <PassengerCar
-        kind={modelId}
-        paint={paint}
-        interior={interior}
-        variant={variant}
-      />
-    );
-  }
-  if (modelId === "cybertruck") {
-    return <Cybertruck paint={paint} interior={interior} variant={variant} />;
-  }
-  return <Cybercab paint={paint} interior={interior} variant={variant} />;
+  return <AuthoredVehicle model={modelId} paint={paint} interior={interior} variant={variant} />;
 }

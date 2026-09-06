@@ -50,7 +50,7 @@ export const useStudio = create<StudioState>((set, get) => ({
   setDemoFeature: (demoFeature) => set({ demoFeature }),
   setEnvironment: (environment) => set({ environment }),
   setQuality: (quality) => set({ quality }),
-  modelId: "model-3-heritage",
+  modelId: "model-3",
   variantId: "lr",
   exteriorId: "ultra-red",
   interiorId: "black",
