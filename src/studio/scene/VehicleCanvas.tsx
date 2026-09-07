@@ -7,6 +7,7 @@ import {
   MeshReflectorMaterial,
   OrbitControls,
   Html,
+  useProgress,
 } from "@react-three/drei";
 import {
   Bloom,
@@ -19,7 +20,7 @@ import * as THREE from "three";
 import { useStudio } from "../store";
 import { ActiveVehicle } from "../vehicles/ActiveVehicle";
 
-import { SHOTS } from "./shots";
+import { shotFor } from "./shots";
 
 function CinematicControls() {
   const controls = useRef<OrbitControlsImpl>(null);
@@ -40,16 +41,17 @@ function CinematicControls() {
     const cam = camera as THREE.PerspectiveCamera;
     cam.fov = size.width < 768 ? 42 : 32;
     cam.updateProjectionMatrix();
-    const shot = SHOTS[feature ?? "overview"];
+    const shot = shotFor(model, feature ?? "overview");
     const target = new THREE.Vector3(...shot.target);
     const end = new THREE.Vector3(...shot.position);
     if (feature !== "interior") {
+      const span =
+        model === "cybertruck" ? 1.18 : model === "cybercab" ? 0.9 : 1;
       end
         .sub(target)
-        .multiplyScalar(
-          (model === "cybertruck" ? 1.13 : 1) * (size.width < 768 ? 1.28 : 1),
-        )
+        .multiplyScalar(span * (size.width < 768 ? 1.28 : 1))
         .add(target);
+      end.y = Math.max(end.y, 0.55);
     }
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -112,60 +114,65 @@ function Lighting() {
         args={[day ? "#a4adb4" : night ? "#060b15" : "#22272e", 16, 48]}
       />
       <hemisphereLight
-        intensity={day ? 1.2 : 0.35}
-        color="#dfebff"
-        groundColor="#42434a"
+        intensity={day ? 1.05 : 0.48}
+        color="#e8eef6"
+        groundColor="#3a3c42"
       />
       <directionalLight
-        position={[-3, 7, -5]}
-        intensity={day ? 3 : 1.1}
+        position={[-3.4, 7.2, -4.6]}
+        intensity={day ? 2.4 : 1.45}
         color={day ? "#fff3df" : "#edf2ff"}
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0002}
+        shadow-bias={-0.00018}
         shadow-camera-left={-7}
         shadow-camera-right={7}
         shadow-camera-top={7}
         shadow-camera-bottom={-7}
       />
+      <directionalLight
+        position={[4.2, 3.4, 2.8]}
+        intensity={day ? 0.55 : 0.4}
+        color={night ? "#8aa7d6" : "#fff4ea"}
+      />
       <Environment resolution={256} frames={1} key={mode}>
         <Lightformer
           form="rect"
-          intensity={day ? 3 : 6}
-          position={[0, 6, -2]}
+          intensity={day ? 4 : 8}
+          position={[0, 6.2, -1.4]}
           rotation={[Math.PI / 2, 0, 0]}
-          scale={[9, 4, 1]}
+          scale={[12, 3.2, 1]}
           color="#ffffff"
         />
         <Lightformer
           form="rect"
-          intensity={day ? 2 : 4}
-          position={[-5, 3, 0]}
+          intensity={day ? 2.2 : 5}
+          position={[-6, 2.8, 0]}
           rotation={[0, Math.PI / 2, 0]}
-          scale={[8, 2, 1]}
+          scale={[10, 1.4, 1]}
           color={night ? "#78a8ff" : "#e8efff"}
         />
         <Lightformer
           form="rect"
-          intensity={day ? 2 : 5}
-          position={[5, 2, 1]}
+          intensity={day ? 2.2 : 5.5}
+          position={[6, 2.2, 1]}
           rotation={[0, -Math.PI / 2, 0]}
-          scale={[7, 1.2, 1]}
+          scale={[9, 0.9, 1]}
           color={night ? "#ef8780" : "#fff4e8"}
         />
         <Lightformer
           form="rect"
-          intensity={3}
-          position={[0, 3, 6]}
+          intensity={3.4}
+          position={[0, 3, 7]}
           rotation={[0, Math.PI, 0]}
-          scale={[6, 2, 1]}
+          scale={[7, 2.2, 1]}
           color="#ffffff"
         />
         <Lightformer
           form="rect"
-          intensity={1.5}
-          position={[0, 2, -7]}
-          scale={[5, 3, 1]}
+          intensity={1.8}
+          position={[0, 2.4, -8]}
+          scale={[6, 3.2, 1]}
           color="#ffffff"
         />
       </Environment>
@@ -209,11 +216,12 @@ function Floor({ high }: { high: boolean }) {
   );
 }
 function Loading() {
+  const { progress, active } = useProgress();
   return (
     <Html center>
       <div className="scene-loading">
         <span />
-        Preparing vehicle
+        {active ? `Loading vehicle ${Math.round(progress)}%` : "Preparing vehicle"}
       </div>
     </Html>
   );
@@ -249,9 +257,10 @@ export function VehicleCanvas() {
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.12,
+        toneMappingExposure: 1.05,
         alpha: false,
         powerPreference: "high-performance",
+        preserveDrawingBuffer: true,
       }}
       fallback={
         <div className="render-error">
@@ -269,9 +278,9 @@ export function VehicleCanvas() {
       <CinematicControls />
       {high ? (
         <EffectComposer multisampling={0} enableNormalPass={false}>
-          <N8AO aoRadius={0.4} intensity={1.3} halfRes />
-          <Bloom luminanceThreshold={1.8} intensity={0.22} mipmapBlur />
-          <Vignette eskil={false} offset={0.35} darkness={0.35} />
+          <N8AO aoRadius={0.35} intensity={1.05} halfRes />
+          <Bloom luminanceThreshold={2.2} intensity={0.14} mipmapBlur />
+          <Vignette eskil={false} offset={0.38} darkness={0.28} />
         </EffectComposer>
       ) : null}
     </Canvas>

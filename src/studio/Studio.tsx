@@ -68,6 +68,18 @@ const featureCopy: Record<string, string> = {
   interior:
     "Step inside for a closer view of the seating and dashboard. Drag to look around, then return to the exterior.",
 };
+const cameraOnlyCopy: Record<string, string> = {
+  doors:
+    "This mesh is a static artist export. This view inspects the doors without cutting the body.",
+  frunk:
+    "A closer look at the front storage area. The source mesh has no separate hood hinge, so the panel stays closed.",
+  trunk:
+    "A closer look at the rear cargo. The source mesh has no separate liftgate hinge, so the panel stays closed.",
+  charge:
+    "The charge port sits on the driver-side rear quarter. This is a camera study of the static mesh.",
+  tonneau:
+    "A closer look at the bed cover. The source mesh has no separate tonneau hinge, so the panel stays closed.",
+};
 
 export function Studio() {
   const s = useStudio();
@@ -307,7 +319,11 @@ export function Studio() {
             / {String(def.features.length).padStart(2, "0")}
           </p>
           <h2>{active.label}</h2>
-          <p>{featureCopy[active.id]}</p>
+          <p>
+            {active.cameraOnly
+              ? (cameraOnlyCopy[active.id] ?? featureCopy[active.id])
+              : featureCopy[active.id]}
+          </p>
           <div className="caption-actions">
             <button onClick={() => next(-1)} aria-label="Previous feature">
               <ChevronLeft size={17} />
@@ -530,7 +546,15 @@ export function Studio() {
         <span>
           {heritage
             ? "Artist-built mesh · Original-generation design"
-            : s.modelId === "model-3" ? "Artist-built mesh · Highland" : "Original authored 3D asset"}
+            : s.modelId === "model-3"
+              ? "Artist-built mesh · Highland · static body"
+              : s.modelId === "model-y"
+                ? "Sketchfab mesh · Juniper · static body"
+                : s.modelId === "cybertruck"
+                  ? "Sketchfab mesh · static body"
+              : s.modelId === "cybercab"
+                ? "Concept study · estimated proportions"
+                : "Original authored 3D asset"}
           <b> / </b>Unofficial Tesla visualization
         </span>
       </footer>
@@ -578,10 +602,13 @@ export function Studio() {
                   to the exterior.
                 </p>
                 <p>
-                  Highland and heritage models use artist-created geometry.
-                  Juniper, Cybertruck and Cybercab use original
-                  authored 3D assets with separate panels and fitted interiors. Trim treatments, paints and articulated panels
-                  are illustrative, not factory CAD or a current ordering guide.
+                  Highland uses a licensed artist mesh with a static body: door,
+                  hood and liftgate demonstrations are camera studies, not hinged
+                  panels. Juniper uses BloxBloger’s 2025 Model Y (CC BY-NC).
+                  Cybertruck uses the Sketchfab “Cybertruck 2025” mesh (CC BY).
+                  Both are static bodies. Cybercab remains an original authored
+                  study. Trim treatments and paints are illustrative, not factory
+                  CAD or a current ordering guide.
                 </p>
                 <p>
                   Original-generation Model 3 and Model S meshes by{" "}
@@ -616,9 +643,65 @@ export function Studio() {
                   .
                 </p>
                 <p>
-                  Highland mesh by <a href="https://sketchfab.com/RBLXSupercars" target="_blank" rel="noreferrer">RBLXSupercars</a>,
-                  shared by brandonleong28, under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
-                  Adapted with compression, material controls and an approximate presentation rig. <a href={`${import.meta.env.BASE_URL}models/highland/CREDITS.md`}>Highland credits</a>.
+                  Highland mesh by{" "}
+                  <a
+                    href="https://sketchfab.com/RBLXSupercars"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    RBLXSupercars
+                  </a>
+                  , shared by brandonleong28, under{" "}
+                  <a
+                    href="https://creativecommons.org/licenses/by/4.0/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    CC BY 4.0
+                  </a>
+                  . Adapted with compression, material controls and an intact
+                  static body.{" "}
+                  <a
+                    href={`${import.meta.env.BASE_URL}models/highland/CREDITS.md`}
+                  >
+                    Highland credits
+                  </a>
+                  .
+                </p>
+                <p>
+                  Juniper mesh by{" "}
+                  <a
+                    href="https://sketchfab.com/3d-models/2025-tesla-model-y-619601e7800d418da5922c4fa7833f74"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    BloxBloger
+                  </a>
+                  , licensed{" "}
+                  <a
+                    href="https://creativecommons.org/licenses/by-nc/4.0/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    CC BY-NC 4.0
+                  </a>
+                  . Cybertruck mesh from{" "}
+                  <a
+                    href="https://sketchfab.com/3d-models/tesla-cybertruck-2025-0fe4980c8cbc441382bfb7d4cf9f092e"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Nieve5677
+                  </a>
+                  , licensed{" "}
+                  <a
+                    href="https://creativecommons.org/licenses/by/4.0/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    CC BY 4.0
+                  </a>
+                  . Adapted with scale, materials and compression.
                 </p>
                 <p>
                   Tesla and vehicle names are trademarks of Tesla, Inc. This

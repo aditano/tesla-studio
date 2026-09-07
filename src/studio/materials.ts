@@ -8,61 +8,66 @@ export function paintParams(paint: Paint) {
       return {
         color: paint.hex,
         metalness: 1,
-        roughness: 0.32,
-        clearcoat: 0.08,
-        clearcoatRoughness: 0.45,
-        envMapIntensity: 1.6,
+        roughness: 0.28,
+        clearcoat: 0.12,
+        clearcoatRoughness: 0.38,
+        envMapIntensity: 1.45,
         sheen: 0,
         sheenRoughness: 1,
         sheenColor: "#000000",
+        reflectivity: 1,
       };
     case "satin":
       return {
         color: paint.hex,
-        metalness: 0.55,
-        roughness: 0.42,
-        clearcoat: 0.2,
-        clearcoatRoughness: 0.45,
-        envMapIntensity: 0.85,
+        metalness: 0.18,
+        roughness: 0.48,
+        clearcoat: 0.15,
+        clearcoatRoughness: 0.5,
+        envMapIntensity: 0.7,
         sheen: 0,
         sheenRoughness: 1,
         sheenColor: "#000000",
+        reflectivity: 0.4,
       };
     case "pearl":
       return {
         color: paint.hex,
-        metalness: 0.42,
-        roughness: 0.18,
+        metalness: 0.12,
+        roughness: 0.2,
         clearcoat: 1,
-        clearcoatRoughness: 0.06,
-        envMapIntensity: 1.15,
-        sheen: 0.4,
-        sheenRoughness: 0.3,
+        clearcoatRoughness: 0.045,
+        envMapIntensity: 1.05,
+        sheen: 0.55,
+        sheenRoughness: 0.28,
         sheenColor: paint.flake ?? "#ffffff",
+        reflectivity: 0.7,
       };
     case "metallic":
       return {
         color: paint.hex,
-        metalness: 0.86,
-        roughness: 0.22,
+        metalness: 0.22,
+        roughness: 0.24,
         clearcoat: 1,
-        clearcoatRoughness: 0.08,
-        envMapIntensity: 1.25,
-        sheen: 0.15,
-        sheenRoughness: 0.4,
+        clearcoatRoughness: 0.06,
+        envMapIntensity: 1.1,
+        sheen: 0.22,
+        sheenRoughness: 0.38,
         sheenColor: paint.flake ?? "#cfd8e3",
+        reflectivity: 0.65,
       };
     default:
       return {
         color: paint.hex,
-        metalness: 0.72,
-        roughness: 0.2,
+        metalness: 0.08,
+        roughness: 0.22,
         clearcoat: 1,
-        clearcoatRoughness: 0.07,
-        envMapIntensity: 1.2,
+        clearcoatRoughness: 0.05,
+        envMapIntensity: 1.05,
         sheen: 0,
         sheenRoughness: 1,
         sheenColor: "#000000",
+        reflectivity: 0.6,
       };
   }
 }
@@ -81,7 +86,7 @@ export function usePaintMaterial(paint: Paint) {
         sheen: p.sheen,
         sheenRoughness: p.sheenRoughness,
         sheenColor: new THREE.Color(p.sheenColor),
-        reflectivity: 0.9,
+        reflectivity: p.reflectivity,
       }),
     [
       p.color,
@@ -93,6 +98,7 @@ export function usePaintMaterial(paint: Paint) {
       p.sheen,
       p.sheenRoughness,
       p.sheenColor,
+      p.reflectivity,
     ],
   );
   useEffect(() => () => material.dispose(), [material]);
@@ -104,15 +110,19 @@ export function useGlassMaterial(tint = "#8fb4c8", opacity = 0.28) {
     () =>
       new THREE.MeshPhysicalMaterial({
         color: tint,
-        metalness: 0.05,
+        metalness: 0,
         roughness: 0.04,
         transparent: true,
         opacity,
-        envMapIntensity: 1.6,
+        transmission: 0,
+        thickness: 0,
+
+        envMapIntensity: 1.4,
         clearcoat: 1,
         clearcoatRoughness: 0.02,
         reflectivity: 1,
         side: THREE.DoubleSide,
+        depthWrite: false,
       }),
     [tint, opacity],
   );

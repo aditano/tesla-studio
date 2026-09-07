@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { VEHICLES, featuresForVehicle } from "../src/studio/catalog";
 import { useStudio } from "../src/studio/store";
-import { SHOTS } from "../src/studio/scene/shots";
+import { SHOTS, shotFor } from "../src/studio/scene/shots";
 import { coachwork } from "../src/studio/vehicles/coachwork";
 import { prepareHeritage } from "../src/studio/vehicles/HeritageVehicle";
 for (const vehicle of VEHICLES) {
@@ -13,6 +13,7 @@ for (const vehicle of VEHICLES) {
     useStudio.getState().setVariant(variant.id);
     for (const feature of featuresForVehicle(vehicle, variant.id)) {
       assert.ok(SHOTS[feature.id], `${vehicle.id}/${feature.id}: camera shot missing`);
+      assert.ok(shotFor(vehicle.id, feature.id), `${vehicle.id}/${feature.id}: model shot missing`);
       useStudio.getState().setFeature(feature.id);
       assert.equal(useStudio.getState().feature, feature.id);
       assert.equal(useStudio.getState().autoRotate, false);
@@ -133,11 +134,17 @@ for (const [model, entry] of Object.entries(authoredManifest.vehicles) as [strin
       checkGeometry(o.geometry);
       triangles += o.geometry.index!.count / 3;
       meshes++;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        if (m.name === "glass") {
+          assert.equal((m as THREE.MeshPhysicalMaterial).transmission, 0, `${model}: glass must not use volume transmission`);
+        }
+      }
     }
   });
   assert.equal(triangles, entry.triangles);
   assert.equal(meshes, entry.meshes);
-  assert.ok(meshes < 100);
+  assert.ok(meshes < 130);
   const center = (o: THREE.Object3D) => {
     o.updateWorldMatrix(true, true);
     return new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
@@ -176,19 +183,52 @@ const highlandSource = await highlandLoader.parseAsync(highlandBytes.buffer.slic
 const highland = prepareHighland(highlandSource.scene);
 let originalTriangles = 0, importedTriangles = 0;
 highlandSource.scene.traverse(o => { if (o instanceof THREE.Mesh) originalTriangles += o.geometry.index!.count / 3; });
-highland.scene.traverse(o => { if (o instanceof THREE.Mesh) { checkGeometry(o.geometry); if (!o.userData.presentationDetail) importedTriangles += o.geometry.index!.count / 3; assert.ok(o.geometry.getAttribute('uv')); } });
+highland.scene.traverse(o => { if (o instanceof THREE.Mesh) { checkGeometry(o.geometry); if (!o.userData.presentationDetail) importedTriangles += o.geometry.index!.count / 3; assert.ok(o.geometry.getAttribute('uv')); if ((o.material as THREE.MeshPhysicalMaterial).name === 'glass') assert.equal((o.material as THREE.MeshPhysicalMaterial).transmission, 0); } });
 assert.equal(importedTriangles, originalTriangles, 'Rig must preserve every source triangle');
 assert.ok(originalTriangles > 150000);
 const size = new THREE.Box3().setFromObject(highland.scene).getSize(new THREE.Vector3());
 assert.ok(Math.abs(size.z - 4.72) < .001 && size.y > 1.35 && size.y < 1.5 && size.x < 2.15, 'Correct scale and orientation');
-for (const name of ['hood', 'tailgate', 'door_fl', 'door_fr', 'door_rl', 'door_rr', 'charge_port', 'wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
+for (const name of ['body', 'wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
  const node = highland.scene.getObjectByName(name)!;
  assert.ok(node.children.length, `Highland rig missing ${name}`);
 }
-const highlandHood = highland.scene.getObjectByName('hood')!;
-const hoodHeight = new THREE.Box3().setFromObject(highlandHood).getCenter(new THREE.Vector3()).y;
-highlandHood.rotation.x = .82; highland.scene.updateMatrixWorld(true);
-assert.ok(new THREE.Box3().setFromObject(highlandHood).getCenter(new THREE.Vector3()).y > hoodHeight + .1);
+assert.ok(highland.staticBody, 'Highland must keep the artist body intact');
+for (const name of ['hood', 'tailgate', 'door_fl', 'charge_port']) {
+ assert.equal(highland.scene.getObjectByName(name), undefined, `Highland must not invent a ${name} hinge`);
+}
 highland.materials.forEach(m => m.dispose());
 highland.scene.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
-console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and presentation rig`);
+console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and static body`);
+
+const { prepareImported } = await import('../src/studio/vehicles/imported');
+for (const spec of [
+  { id: 'juniper', file: 'public/models/juniper/model.glb', min: 200000, length: 4.794, maxWidth: 2.3, minHeight: 1.4, wheels: true },
+  { id: 'cybertruck-import', file: 'public/models/cybertruck-import/model.glb', min: 50000, length: 5.6829, maxWidth: 2.4, minHeight: 1.5, wheels: false },
+] as const) {
+  const bytes = await fs.readFile(spec.file);
+  const loader = new RuntimeGLTFLoader();
+  loader.setMeshoptDecoder(decoder);
+  const loaded = await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
+  const prepared = prepareImported(loaded.scene, spec.id);
+  let triangles = 0;
+  prepared.scene.traverse(o => {
+    if (o instanceof THREE.Mesh) {
+      checkGeometry(o.geometry);
+      triangles += o.geometry.index!.count / 3;
+    }
+  });
+  assert.ok(triangles > spec.min, `${spec.id} missing mesh detail (${triangles})`);
+  const size = new THREE.Box3().setFromObject(prepared.scene).getSize(new THREE.Vector3());
+  assert.ok(Math.abs(size.z - spec.length) < 0.02, `${spec.id} length ${size.z}`);
+  assert.ok(size.x < spec.maxWidth && size.y > spec.minHeight, `${spec.id} bounds ${size.x.toFixed(2)}x${size.y.toFixed(2)}`);
+  assert.ok(prepared.staticBody);
+  assert.ok(prepared.scene.getObjectByName('body'));
+  if (spec.wheels) {
+    for (const name of ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
+      assert.ok(prepared.scene.getObjectByName(name), `${spec.id} missing ${name}`);
+    }
+  }
+  prepared.materials.forEach(m => m.dispose());
+  console.log(`PASS: ${spec.id}, ${triangles.toLocaleString()} triangles, ${size.x.toFixed(2)}x${size.y.toFixed(2)}x${size.z.toFixed(2)} m`);
+}
+

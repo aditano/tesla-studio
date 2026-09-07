@@ -2,7 +2,7 @@
 
 These four GLBs are original Tesla-inspired presentation meshes created for Tesla Studio. They replace the earlier runtime body primitives. No downloaded third-party mesh or texture is embedded in these files.
 
-The surfaces are authored from longitudinal profiles and separate panel patches. Detail includes wheel openings, glazing, panel seals, mirror housings, light assemblies, tire tread, brake rotors and calipers, alternative wheel faces, seats, dashboard, display and door cards. Materials are separate for configurable paint, stainless steel, upholstery, glass and lighting.
+The surfaces are authored from longitudinal profiles and separate panel patches. Juniper uses a more vertical fascia, wraparound front and rear light bars, and crossover stance. Cybertruck uses production proportions with hexagonal black flares, a recessed front blade, black cladding and six-spoke Cyber wheels — not the 2019 concept. Cybercab is a shorter teardrop with full-disc aero covers and no handles or mirrors. Detail includes wheel openings, glazing, panel seals, mirror housings, light assemblies, tire tread, brake rotors and calipers, alternative wheel faces, seats, dashboard, display and door cards. Materials are separate for configurable paint, stainless steel, upholstery, glass and lighting.
 
 ## Rebuild
 

@@ -58,12 +58,18 @@ export type Variant = {
 };
 
 export type WheelStyle =
-  "photon" | "nova" | "helix" | "sport" | "cyber" | "aero";
+  | "photon"
+  | "nova"
+  | "helix"
+  | "sport"
+  | "cyber"
+  | "aero";
 
 export type Feature = {
   id: FeatureId;
   label: string;
   hint: string;
+  cameraOnly?: boolean;
 };
 
 export type VehicleDef = {
@@ -75,6 +81,7 @@ export type VehicleDef = {
   interiors: Interior[];
   features: Feature[];
   parts: PartId[];
+  marketNote?: string;
 };
 
 export const PAINT: Record<string, Paint> = {
@@ -86,7 +93,7 @@ export const PAINT: Record<string, Paint> = {
   },
   "pearl-white": {
     id: "pearl-white",
-    name: "Pearl White",
+    name: "Pearl White Multi-Coat",
     hex: "#f3f1ea",
     finish: "pearl",
   },
@@ -220,6 +227,8 @@ export const VEHICLES: VehicleDef[] = [
     id: "model-3",
     name: "Model 3",
     tag: "Highland",
+    marketNote:
+      "North America 2026 presentation. Paint and wheel names follow Tesla's US Design Studio; availability by trim is illustrative.",
     variants: [
       {
         id: "rwd",
@@ -254,34 +263,53 @@ export const VEHICLES: VehicleDef[] = [
       {
         id: "headlights",
         label: "Headlights",
-        hint: "Projector DRLs and main beams",
+        hint: "Swept Highland projectors",
       },
-      { id: "doors", label: "Doors", hint: "Frameless four-door cabin" },
-      { id: "frunk", label: "Frunk", hint: "Front trunk" },
-      { id: "trunk", label: "Trunk", hint: "Power liftgate" },
-      { id: "charge", label: "Charge port", hint: "NACS, driver quarter" },
+      {
+        id: "doors",
+        label: "Doors",
+        hint: "Frameless four-door cabin",
+        cameraOnly: true,
+      },
+      {
+        id: "frunk",
+        label: "Frunk",
+        hint: "Front storage",
+        cameraOnly: true,
+      },
+      {
+        id: "trunk",
+        label: "Trunk",
+        hint: "Rear cargo",
+        cameraOnly: true,
+      },
+      {
+        id: "charge",
+        label: "Charge port",
+        hint: "NACS, driver quarter",
+        cameraOnly: true,
+      },
+      {
+        id: "interior",
+        label: "Inside the cabin",
+        hint: "Minimalist Highland interior",
+      },
     ],
-    parts: [
-      "door-fl",
-      "door-fr",
-      "door-rl",
-      "door-rr",
-      "frunk",
-      "trunk",
-      "charge",
-    ],
+    parts: [],
   },
   {
     id: "model-y",
     name: "Model Y",
     tag: "Juniper",
+    marketNote:
+      "Juniper mesh by BloxBloger on Sketchfab, CC BY-NC 4.0. Static body; panel tours are camera studies.",
     variants: [
       {
         id: "rwd",
         name: "Rear-Wheel Drive",
-        subtitle: '19" Crossflow',
+        subtitle: '18" Aperture',
         wheelStyle: "photon",
-        wheelRadius: 0.348,
+        wheelRadius: 0.34,
         caliper: "#1a1a1a",
       },
       {
@@ -295,7 +323,7 @@ export const VEHICLES: VehicleDef[] = [
       {
         id: "p",
         name: "Performance",
-        subtitle: '21" Helix',
+        subtitle: '21" Arachnid',
         wheelStyle: "helix",
         wheelRadius: 0.365,
         caliper: "#c41212",
@@ -308,25 +336,40 @@ export const VEHICLES: VehicleDef[] = [
     features: [
       { id: "lightbar", label: "Light bar", hint: "Juniper signature blade" },
       { id: "headlights", label: "Headlights", hint: "Corner projectors" },
-      { id: "doors", label: "Doors", hint: "Four-door cabin" },
-      { id: "frunk", label: "Frunk", hint: "Front trunk" },
-      { id: "trunk", label: "Liftgate", hint: "Hands-free cargo" },
-      { id: "charge", label: "Charge port", hint: "NACS, driver quarter" },
+      {
+        id: "doors",
+        label: "Doors",
+        hint: "Four-door cabin",
+        cameraOnly: true,
+      },
+      {
+        id: "frunk",
+        label: "Frunk",
+        hint: "Front trunk",
+        cameraOnly: true,
+      },
+      {
+        id: "trunk",
+        label: "Liftgate",
+        hint: "Hands-free cargo",
+        cameraOnly: true,
+      },
+      {
+        id: "charge",
+        label: "Charge port",
+        hint: "NACS, driver quarter",
+        cameraOnly: true,
+      },
+      { id: "interior", label: "Inside the cabin", hint: "Minimalist Juniper interior" },
     ],
-    parts: [
-      "door-fl",
-      "door-fr",
-      "door-rl",
-      "door-rr",
-      "frunk",
-      "trunk",
-      "charge",
-    ],
+    parts: [],
   },
   {
     id: "cybertruck",
     name: "Cybertruck",
     tag: "Exoskeleton",
+    marketNote:
+      "Sketchfab Cybertruck 2025 listing (Nieve5677, CC BY 4.0). Mid-poly source, static body. Not the Sketcher 380k production mesh.",
     variants: [
       {
         id: "awd",
@@ -360,25 +403,41 @@ export const VEHICLES: VehicleDef[] = [
         label: "Air suspension",
         hint: "Raise and lower the body",
       },
-      { id: "tonneau", label: "Tonneau", hint: "Power tonneau cover" },
-      { id: "frunk", label: "Frunk", hint: "Front vault" },
-      { id: "trunk", label: "Bed", hint: "Stainless vault" },
+      {
+        id: "tonneau",
+        label: "Tonneau",
+        hint: "Power tonneau cover",
+        cameraOnly: true,
+      },
+      {
+        id: "frunk",
+        label: "Frunk",
+        hint: "Front vault",
+        cameraOnly: true,
+      },
+      {
+        id: "trunk",
+        label: "Bed",
+        hint: "Stainless vault",
+        cameraOnly: true,
+      },
       { id: "headlights", label: "Headlights", hint: "Matrix projectors" },
+      {
+        id: "charge",
+        label: "Charge port",
+        hint: "Bed-side NACS inlet",
+        cameraOnly: true,
+      },
+      { id: "interior", label: "Inside the cabin", hint: "Yoke and vault interior" },
     ],
-    parts: [
-      "door-fl",
-      "door-fr",
-      "door-rl",
-      "door-rr",
-      "frunk",
-      "tonneau",
-      "trunk",
-    ],
+    parts: [],
   },
   {
     id: "cybercab",
     name: "Cybercab",
     tag: "Robotaxi",
+    marketNote:
+      "Concept two-seater. Proportions estimated from reveal imagery. Not a production specification.",
     variants: [
       {
         id: "cab",
@@ -402,6 +461,7 @@ export const VEHICLES: VehicleDef[] = [
       { id: "butterfly", label: "Butterfly doors", hint: "Canopy doors" },
       { id: "frunk", label: "Frunk", hint: "Front storage" },
       { id: "headlights", label: "Headlights", hint: "Corner lamps" },
+      { id: "interior", label: "Inside the cabin", hint: "Two-seat robotaxi cabin" },
     ],
     parts: ["door-fl", "door-fr", "frunk"],
   },
@@ -437,6 +497,7 @@ VEHICLES.unshift(
     name: "Model 3",
     tag: "Original design",
     features: heritageFeatures,
+    parts: ["door-fl", "door-fr", "frunk", "trunk"],
     variants: [
       {
         id: "rwd",
@@ -466,6 +527,7 @@ VEHICLES.unshift(
       },
     ],
     interiors: [INTERIORS.black, INTERIORS.white],
+    marketNote: "Original-generation artist mesh. Not Highland.",
   },
   {
     ...VEHICLES[0],
@@ -473,6 +535,7 @@ VEHICLES.unshift(
     name: "Model S",
     tag: "Original design",
     features: heritageFeatures,
+    parts: ["door-fl", "door-fr", "frunk", "trunk"],
     variants: [
       {
         id: "85",
@@ -493,6 +556,7 @@ VEHICLES.unshift(
       },
     ],
     interiors: [INTERIORS.black, INTERIORS.cream],
+    marketNote: "Original-generation artist mesh. Not Plaid.",
   },
 );
 

@@ -54,10 +54,13 @@ const steel = mat('exterior_steel', '#949da5', 1, .32, {
   anisotropy: .65,
   anisotropyRotation: 0
 });
-const glass = mat('glass', '#101b25', .25, .08, {
+const glass = mat('glass', '#6a8898', 0, .06, {
   clearcoat: 1,
   transparent: true,
-  opacity: .86
+  opacity: .28,
+  envMapIntensity: 1.4,
+  reflectivity: 1,
+  depthWrite: false
 });
 const trim = mat('satin_trim', '#141a20', .25, .36),
   rubber = mat('tire_rubber', '#141619', 0, .87),
@@ -238,16 +241,41 @@ function wheel(root, id, x, z, r, truck = false, cab = false) {
   const standard = group(w, 'wheel_standard'),
     sport = group(w, 'wheel_sport');
   if (cab) {
-    const g = new T.CylinderGeometry(rr, rr, .035, 64);
+    const g = new T.CylinderGeometry(rr * 1.01, rr * 1.01, .038, 72);
     g.rotateZ(Math.PI / 2);
     g.translate(face, 0, 0);
     mesh(standard, 'aero_disc', g, paint);
-    for (let i = 0; i < 9; i++) {
-      const a = i / 9 * Math.PI * 2;
-      box(standard, 'aero_slot', [.004, .014, .065], [face + side * .02, Math.sin(a) * rr * .78, Math.cos(a) * rr * .78], trim, .003, [a, 0, 0]);
+    const lip = new T.TorusGeometry(rr * .98, .007, 8, 64);
+    lip.rotateY(Math.PI / 2);
+    lip.translate(face + side * .01, 0, 0);
+    mesh(standard, 'aero_lip', lip, metal);
+    const cap = new T.CylinderGeometry(rr * .22, rr * .22, .01, 32);
+    cap.rotateZ(Math.PI / 2);
+    cap.translate(face + side * .02, 0, 0);
+    mesh(standard, 'aero_cap', cap, paint);
+  } else if (truck) {
+    const cover = new T.CylinderGeometry(rr * .99, rr * .99, .024, 12);
+    cover.rotateZ(Math.PI / 2);
+    cover.translate(face - side * .002, 0, 0);
+    mesh(standard, 'cyber_cover', cover, trim);
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2 + Math.PI / 6;
+      const hole = new T.CylinderGeometry(rr * .155, rr * .155, .04, 6);
+      hole.rotateZ(Math.PI / 2);
+      hole.translate(face + side * .006, Math.sin(a) * rr * .46, Math.cos(a) * rr * .46);
+      mesh(standard, 'cyber_hex_void', hole, seal);
+      const spoke = new T.CylinderGeometry(rr * .04, rr * .055, rr * .42, 6);
+      spoke.rotateX(Math.PI / 2);
+      spoke.rotateY(a);
+      spoke.translate(face + side * .01, Math.sin(a) * rr * .22, Math.cos(a) * rr * .22);
+      mesh(standard, 'cyber_spoke', spoke, rimMat);
     }
-  } else for (let i = 0; i < (truck ? 7 : 5); i++) {
-    const a = i / (truck ? 7 : 5) * Math.PI * 2;
+    const hex = new T.CylinderGeometry(.05, .05, .024, 6);
+    hex.rotateZ(Math.PI / 2);
+    hex.translate(face + side * .014, 0, 0);
+    mesh(standard, 'cyber_hub', hex, metal);
+  } else for (let i = 0; i < 5; i++) {
+    const a = i / 5 * Math.PI * 2;
     const points = [[0, -.018, .045], [0, .045, rr * .91], [0, -.033, rr * .96], [0, -.05, .09]].map(([xx, yy, zz]) => [face, yy * Math.cos(a) - zz * Math.sin(a), yy * Math.sin(a) + zz * Math.cos(a)]);
     quad(standard, 'aero_blade', points, rimMat);
   }
@@ -336,25 +364,29 @@ function cabin(parent, {
 function passenger(root, kind) {
   const y = kind === 'model-y',
     cab = kind === 'cybercab',
-    length = cab ? 4.35 : y ? 4.794 : 4.72,
+    length = cab ? 4.12 : y ? 4.794 : 4.72,
     half = length / 2,
-    w = y ? .96 : cab ? .92 : .925,
-    lift = y ? .13 : 0;
-  const frontAxle = cab ? -1.34 : y ? -1.504 : -1.492,
-    rearAxle = cab ? 1.29 : y ? 1.386 : 1.383,
-    r = cab ? .34 : y ? .358 : .337;
+    w = y ? .99 : cab ? .90 : .925,
+    lift = y ? .14 : cab ? .02 : 0;
+  const frontAxle = cab ? -1.22 : y ? -1.504 : -1.492,
+    rearAxle = cab ? 1.18 : y ? 1.386 : 1.383,
+    r = cab ? .33 : y ? .358 : .337;
   const body = group(root, 'body');
-  const hood = pivot(body, 'hood', [0, .89 + lift, -.98]);
-  const hatch = pivot(body, 'tailgate', [0, y ? 1.49 : .98, y ? .91 : 1.37]);
-  const frontDoorZ = cab ? -1.00 : -.92,
-    rearDoorZ = cab ? 1.10 : .28,
+  const hood = pivot(body, 'hood', [0, .89 + lift, cab ? -.72 : -.98]);
+  const hatch = pivot(body, 'tailgate', [0, y ? 1.49 : cab ? .78 : .98, y ? .91 : cab ? 1.05 : 1.37]);
+  const frontDoorZ = cab ? -.92 : -.92,
+    rearDoorZ = cab ? 1.02 : .28,
     rearEnd = 1.18;
   const doors = {};
   for (const s of [-1, 1]) {
-    doors[s + 'f'] = pivot(body, s < 0 ? 'door_fl' : 'door_fr', cab ? [s * .72, 1.21, -.99] : [s * (w - .025), .7, frontDoorZ]);
+    doors[s + 'f'] = pivot(body, s < 0 ? 'door_fl' : 'door_fr', cab ? [s * .55, 1.28, -.35] : [s * (w - .025), .7, frontDoorZ]);
     if (!cab) doors[s + 'r'] = pivot(body, s < 0 ? 'door_rl' : 'door_rr', [s * (w - .025), .7, rearDoorZ]);
   }
-  const stations = [[-half, .71, y || cab ? .82 : .66, y || cab ? .83 : .67], [-half + .15, .83, y || cab ? .86 : .75, y || cab ? .87 : .755], [-1.96, w * .98, y || cab ? .89 : .81, y || cab ? .90 : .80], [-1.5, w, .89 + lift, .81 + lift], [-.98, w, .96 + lift, .90 + lift], [0, w * .994, 1 + lift, .96 + lift], [1.3, w, 1 + lift, .93 + lift], [half - .22, w * .91, .91 + lift, .90 + lift], [half, w * .80, .87 + lift, .88 + lift]];
+  const stations = y
+    ? [[-half, .88, .84, .86], [-half + .12, .97, .94, .94], [-1.90, w, 1.02, .98], [-1.48, w, 1.08, 1.00], [-.90, w, 1.16, 1.08], [0, w, 1.18, 1.13], [1.12, w, 1.16, 1.10], [half - .22, w * .95, 1.08, 1.06], [half, w * .86, 1.02, 1.04]]
+    : cab
+    ? [[-half, .62, .58, .60], [-half + .18, .82, .76, .78], [-1.42, w * .99, .88, .84], [-.88, w, .93, .88], [-.18, w, .96, .90], [.62, w * .97, .92, .86], [1.22, w * .82, .78, .72], [half - .10, w * .58, .58, .54], [half, w * .38, .42, .42]]
+    : [[-half, .71, .66, .67], [-half + .15, .83, .75, .755], [-1.96, w * .98, .81, .80], [-1.5, w, .89, .81], [-.98, w, .96, .90], [0, w * .994, 1, .96], [1.3, w, 1, .93], [half - .22, w * .91, .91, .90], [half, w * .80, .87, .88]];
   const width = z => spline(stations, z, 1),
     belt = z => spline(stations, z, 2),
     crown = z => spline(stations, z, 3);
@@ -395,11 +427,11 @@ function passenger(root, kind) {
         const a = i / 32 * Math.PI;
         pts.push([s * (width(axle) + .001), r + Math.sin(a) * (r + .04), axle + Math.cos(a) * (r + .04)]);
       }
-      tube(body, 'rolled_wheel_arch', pts, y ? .013 : .005, y ? trim : paint, 48);
+      tube(body, 'rolled_wheel_arch', pts, y ? .018 : cab ? .016 : .005, y || cab ? trim : paint, 48);
     }
     for (const [a, b] of [[-half, -.98], [1.7, half]]) patch(body, 'fender_crown', (u, v) => upper(s, lerp(a, b, u), v), Math.ceil((b - a) * 42), 12, paint);
     // Sills and door seals follow the actual panel edges.
-    box(body, 'sill', [.044, .065, 1.72], [s * (w - .017), .205 + lift * .2, .08], trim, .016);
+    box(body, 'sill', [y || cab ? .058 : .044, y ? .11 : .065, cab ? 1.55 : 1.72], [s * (w - .008), .195 + lift * .2, .08], trim, .016);
     for (const z of [frontDoorZ, rearDoorZ, ...(!cab ? [rearEnd] : [])]) tube(body, 'door_seal', [side(s, z, .05).toArray(), side(s, z, .5).toArray(), side(s, z, 1).toArray()], .0022, seal, 24);
     if (!cab) {
       for (const [tag, z] of [['f', .10], ['r', 1.02]]) box(doors[s + tag], 'flush_handle', [.015, .025, .155], [s * (w + .002), .91 + lift, z], trim, .009);
@@ -410,26 +442,47 @@ function passenger(root, kind) {
   }
   // Hood and front bumper have separately fitted edges.
   patch(hood, 'hood_skin', (u, v) => {
-    const z = lerp(-half + .17, -.985, v),
-      x = (u - .5) * 1.378;
-    return V(x, crown(z) + .014 * (1 - (x / .689) ** 2), z);
+    const z = lerp(-half + (cab ? .28 : .17), cab ? -.74 : -.985, v),
+      x = (u - .5) * (cab ? 1.22 : 1.378);
+    const crownLift = cab ? .04 * Math.sin(v * Math.PI) : .014;
+    return V(x, crown(z) + crownLift * (1 - (x / (cab ? .61 : .689)) ** 2), z);
   }, 36, 44, paint, .008);
   patch(body, 'nose_cap', (u, v) => {
-    const z = lerp(-half, -half + .165, v),
-      x = (u - .5) * 1.38;
-    return V(x, crown(z) + .012 * (1 - (x / .69) ** 2), z);
+    const z = lerp(-half, -half + (cab ? .28 : .165), v),
+      x = (u - .5) * (cab ? 1.24 : 1.38);
+    const bulge = cab ? .055 * Math.sin(v * Math.PI) : .012;
+    return V(x, crown(z) + bulge * (1 - (x / (cab ? .62 : .69)) ** 2), z);
   }, 28, 8, paint);
   patch(body, 'front_fascia', (u, v) => {
-    const x = (u - .5) * 1.42,
-      z = -half + .075 * (x / .71) ** 2 + .085 * (1 - v) ** 2 - .025 * Math.sin(v * Math.PI);
-    return V(x, lerp(.23, crown(-half), v), z);
+    const span = y ? 1.72 : cab ? 1.38 : 1.42;
+    const x = (u - .5) * span;
+    const z = y
+      ? -half + .010 * (x / .86) ** 2 + .016 * (1 - v)
+      : cab
+      ? -half + .06 * (x / .69) ** 2 + .10 * (1 - v) ** 2
+      : -half + .075 * (x / .71) ** 2 + .085 * (1 - v) ** 2 - .025 * Math.sin(v * Math.PI);
+    const top = y ? .86 + lift : cab ? crown(-half) : crown(-half);
+    return V(x, lerp(cab ? .20 : y ? .28 : .23, top, v), z);
   }, 40, 18, paint);
-  box(body, 'front_lower_grille', [1.12, .073, .025], [0, .30, -half - .002], trim, .029);
-  for (let i = 0; i < 23; i++) box(body, 'grille_vane', [.006, .046, .018], [-.52 + i * .047, .30, -half - .019], dash, .002);
+  if (y) {
+    box(body, 'front_lower_grille', [1.58, .055, .04], [0, .32, -half - .012], trim, .018);
+    box(body, 'front_intake_slot', [1.12, .018, .02], [0, .32, -half - .028], seal, .006);
+    box(body, 'front_valance', [1.62, .09, .07], [0, .22, -half + .01], trim, .02);
+  } else if (cab) {
+    box(body, 'front_lower_grille', [1.02, .04, .03], [0, .24, -half + .01], trim, .014);
+    box(body, 'front_splitter', [1.18, .03, .08], [0, .17, -half + .04], trim, .01);
+  } else {
+    box(body, 'front_lower_grille', [1.12, .073, .025], [0, .30, -half - .002], trim, .029);
+    for (let i = 0; i < 23; i++) box(body, 'grille_vane', [.006, .046, .018], [-.52 + i * .047, .30, -half - .019], dash, .002);
+  }
   box(body, 'frunk_tub', [1.25, .12, .89], [0, .54 + lift, -1.55], carpet, .07);
   for (const s of [-1, 1]) tube(body, 'hood_gas_strut', [[s * .53, .64 + lift, -1.18], [s * .53, .84 + lift, -1]], .009, metal, 10);
   // Greenhouse: independently modeled windshield, roof, rear glass and side apertures.
-  const roofStations = [[-.985, .90 + lift, .82], [-.73, 1.13 + lift, .79], [-.25, 1.39 + lift, .73], [.28, 1.44 + lift, .715], [.87, 1.39 + lift, .735], [1.38, 1.19 + lift, .80], [1.73, .96 + lift, .85]];
+  const roofStations = y
+    ? [[-.985, 1.12, .88], [-.68, 1.38, .84], [-.12, 1.62, .78], [.42, 1.68, .76], [1.02, 1.58, .78], [1.48, 1.36, .84], [1.82, 1.12, .90]]
+    : cab
+    ? [[-.82, .98, .76], [-.42, 1.24, .68], [.08, 1.40, .62], [.58, 1.36, .60], [1.08, 1.16, .62], [1.48, .88, .64], [1.88, .58, .52]]
+    : [[-.985, .90 + lift, .82], [-.73, 1.13 + lift, .79], [-.25, 1.39 + lift, .73], [.28, 1.44 + lift, .715], [.87, 1.39 + lift, .735], [1.38, 1.19 + lift, .80], [1.73, .96 + lift, .85]];
   const ry = z => spline(roofStations, z, 1),
     rx = z => spline(roofStations, z, 2);
   const roofFn = (u, z) => {
@@ -464,8 +517,14 @@ function passenger(root, kind) {
     tube(body, 'roof_rail', rail, .009, paint, 64);
     if (!cab) tube(body, 'b_pillar', [[s * width(.275) * .965, belt(.275), .275], [s * rx(.275), ry(.275) - .044, .275]], .019, trim, 12);
   }
-  // Lamps: Highland's swept projectors, Juniper's continuous DRL plus lower clusters.
-  if (y || cab) tube(body, 'front_signature', [[-.76, .812, -half + .055], [0, .815, -half - .005], [.76, .812, -half + .055]], .009, blade, 64);
+  // Lamps: Highland swept projectors, Juniper wraparound blade, Cybercab smile bar.
+  if (y) {
+    tube(body, 'front_bar_housing', [[-1.02, .81 + lift, -half + .20], [-.94, .842 + lift, -half - .004], [0, .852 + lift, -half - .018], [.94, .842 + lift, -half - .004], [1.02, .81 + lift, -half + .20]], .016, trim, 84);
+    tube(body, 'front_signature', [[-1.00, .81 + lift, -half + .20], [-.92, .844 + lift, -half - .006], [0, .854 + lift, -half - .022], [.92, .844 + lift, -half - .006], [1.00, .81 + lift, -half + .20]], .009, blade, 84);
+  } else if (cab) {
+    tube(body, 'front_bar_housing', [[-.86, .66, -half + .16], [-.72, .76, -half - .01], [0, .80, -half - .034], [.72, .76, -half - .01], [.86, .66, -half + .16]], .014, trim, 80);
+    tube(body, 'front_signature', [[-.84, .66, -half + .16], [-.70, .762, -half - .012], [0, .804, -half - .038], [.70, .762, -half - .012], [.84, .66, -half + .16]], .008, blade, 80);
+  }
   for (const s of [-1, 1]) {
     if (!y && !cab) {
       const lampPoint = (x, z) => [s * x, crown(z) + .012, z];
@@ -473,7 +532,7 @@ function passenger(root, kind) {
       quad(body, 'swept_headlamp_housing', pts, trim);
       tube(body, 'headlamp_drl', pts.slice(0, 3).map(p => [p[0], p[1] + .005, p[2]]), .006, white, 30);
       for (const x of [.61, .70]) sphere(body, 'projector_emitter', [.031, .009, .028], [s * x, crown(-half + .19) + .018, -half + .19], lens);
-    } else box(body, 'low_projector', [.18, .042, .03], [s * .58, .56, -half - .016], white, .013, [0, s * .10, 0]);
+    } else box(body, 'low_projector', [.20, .046, .038], [s * (y ? .72 : .58), .50 + lift * .12, -half - (y ? .018 : .010)], white, .012, [0, s * .12, 0]);
     if (!y && !cab) {
       tube(hatch, 'c_taillamp', [[s * .78, .86, half - .14], [s * .58, .86, half - .032], [s * .50, .81, half - .018], [s * .56, .746, half - .017]], .012, tail, 36);
     }
@@ -491,8 +550,19 @@ function passenger(root, kind) {
     const x = (u - .5) * 1.4;
     return V(x, lerp(.68 + lift, .87 + lift, v), half - .006 - .03 * (x / .7) ** 2);
   }, 32, 8, paint);
-  if (y || cab) tube(hatch, 'rear_signature', [[-.8, .865 + lift, half - .075], [0, .865 + lift, half + .004], [.8, .865 + lift, half - .075]], .012, tail, 64);
-  box(body, 'rear_lower_bumper', [1.57, .18, .07], [0, .31 + lift * .3, half - .05], trim, .045);
+  if (y) {
+    box(hatch, 'rear_lamp_housing', [1.82, .10, .055], [0, .93 + lift, half - .008], trim, .016);
+    tube(hatch, 'rear_signature', [[-.90, .93 + lift, half + .014], [0, .942 + lift, half + .022], [.90, .93 + lift, half + .014]], .014, tail, 80);
+    for (const s of [-1, 1]) {
+      tube(hatch, 'rear_wrap', [[s * .90, .93 + lift, half + .010], [s * .97, .90 + lift, half - .08], [s * .99, .78 + lift, half - .26], [s * .97, .62 + lift, half - .38]], .009, tail, 32);
+      box(hatch, 'side_marker', [.014, .06, .018], [s * .98, .62 + lift, half - .38], tail, .004);
+    }
+    for (let i = 0; i < 5; i++) box(hatch, 'rear_letter', [.042, .016, .004], [-.30 + i * .15, .942 + lift, half + .028], trim, .002);
+  } else if (cab) {
+    tube(hatch, 'rear_bar_housing', [[-.68, .70, half - .05], [0, .73, half + .006], [.68, .70, half - .05]], .014, trim, 64);
+    tube(hatch, 'rear_signature', [[-.66, .70, half - .05], [0, .732, half + .010], [.66, .70, half - .05]], .009, tail, 64);
+  }
+  box(body, 'rear_lower_bumper', [y ? 1.68 : 1.57, .18, .07], [0, .31 + lift * .3, half - .05], trim, .045);
   box(hatch, 'license_recess', [.40, .14, .018], [0, .70 + lift, half + .005], trim, .019);
   for (const s of [-1, 1]) box(body, 'rear_reflector', [.15, .017, .02], [s * .65, .38, half - .012], tail, .005);
   box(body, 'cargo_floor', [1.2, .06, .68], [0, .52 + lift, 1.83], carpet, .018);
@@ -524,7 +594,7 @@ function passenger(root, kind) {
   root.userData.dimensions = {
     length,
     width: w * 2,
-    height: y ? 1.621 : cab ? 1.44 : 1.44,
+    height: y ? 1.624 : cab ? 1.38 : 1.44,
     wheelbase: rearAxle - frontAxle,
     precision: cab ? 'concept proportions estimated from photographs' : 'principal dimensions referenced to Tesla owner manuals'
   };
@@ -568,17 +638,35 @@ function cybertruck(root) {
       box(parent, 'door_card', [.05, .43, b - a - .12], [s * (w - .05), .93, (a + b) / 2], leather, .019);
       box(parent, 'door_armrest', [.08, .06, .57], [s * (w - .11), .88, (a + b) / 2], trim, .014);
     }
-    const arch = [[-.59, .43], [-.38, .98], [.37, .98], [.59, .43]];
-    for (const z of [front, rear]) tube(body, 'polygonal_fender', arch.map(([dz, y]) => [s * (w + .017), y, z + dz]), .037, trim, 16);
+    const arch = [[-.52, .38], [-.62, .62], [-.50, 1.02], [-.18, 1.22], [.18, 1.22], [.50, 1.02], [.62, .62], [.52, .38]];
+    for (const z of [front, rear]) {
+      tube(body, 'polygonal_fender', arch.map(([dz, y]) => [s * (w + .028), y, z + dz]), .018, trim, 24);
+      for (let i = 0; i < arch.length - 1; i++) {
+        const a = arch[i], b = arch[i + 1];
+        quad(body, 'flare_lip', [
+          [s * (w + .006), a[1], z + a[0]],
+          [s * (w + .055), a[1] + .012, z + a[0] * 1.05],
+          [s * (w + .055), b[1] + .012, z + b[0] * 1.05],
+          [s * (w + .006), b[1], z + b[0]]
+        ], trim);
+        quad(body, 'flare_well', [
+          [s * (w - .04), a[1] * .92 + .08, z + a[0] * .82],
+          [s * (w + .006), a[1], z + a[0]],
+          [s * (w + .006), b[1], z + b[0]],
+          [s * (w - .04), b[1] * .92 + .08, z + b[0] * .82]
+        ], seal);
+      }
+    }
     quad(body, 'bed_sail', [[s * w, 1.22, 1.11], [s * (.78 + .08 * 1.11), roofY(1.11), 1.11], [s * w, 1.25, half], [s * w, 1.22, half]], steel);
     tube(body, 'roof_fold', [[s * w, 1.22, -1.2], [s * .78, 1.794, -.12], [s * w, 1.25, half]], .008, steel, 2);
-    box(body, 'running_board', [.07, .065, 2.15], [s * (w + .02), .445, -.11], trim, .008);
+    box(body, 'running_board', [.055, .055, 2.05], [s * (w + .018), .40, -.11], trim, .008);
+    box(body, 'side_cladding', [.05, .20, 2.08], [s * (w + .014), .50, -.11], trim, .008);
     const mirror = df;
     quad(mirror, 'mirror_cap', [[s * 1.05, 1.21, -.96], [s * 1.205, 1.27, -.87], [s * 1.205, 1.19, -.74], [s * 1.05, 1.17, -.76]], steel);
     quad(mirror, 'mirror_glass', [[s * 1.08, 1.205, -.748], [s * 1.195, 1.263, -.748], [s * 1.195, 1.192, -.735], [s * 1.08, 1.18, -.735]], metal);
     for (const z of [-1.05, 1.3]) sphere(body, 'side_camera', [.012, .018, .023], [s * (w + .005), 1.16, z], lens);
   }
-  quad(body, 'front_face', [[-w, .43, -half], [w, .43, -half], [w, .96, -half], [-w, .96, -half]], steel);
+  quad(body, 'front_face', [[-w, .70, -half], [w, .70, -half], [w, .96, -half], [-w, .96, -half]], steel);
   quad(hood, 'hood_panel', [[-w, .964, -half], [w, .964, -half], [w, 1.22, -1.2], [-w, 1.22, -1.2]], steel);
   patch(body, 'windshield', (u, v) => {
     const z = lerp(-1.19, -.125, v);
@@ -586,8 +674,10 @@ function cybertruck(root) {
   }, 30, 24, glass);
   quad(body, 'glass_roof', [[-.775, 1.794, -.12], [.775, 1.794, -.12], [.85, roofY(.92), .92], [-.85, roofY(.92), .92]], glass);
   quad(body, 'rear_cab_glass', [[-.85, roofY(.92), .92], [.85, roofY(.92), .92], [.92, 1.21, 1.1], [-.92, 1.21, 1.1]], glass);
-  box(body, 'front_crash_trim', [2.06, .14, .07], [0, .43, -half + .004], trim, .017);
-  tube(body, 'continuous_front_drl', [[-1, .972, -half - .007], [0, .974, -half - .010], [1, .972, -half - .007]], .008, blade, 48);
+  box(body, 'front_crash_trim', [2.08, .32, .13], [0, .50, -half + .02], trim, .01);
+  box(body, 'front_skid', [1.82, .05, .20], [0, .32, -half + .08], trim, .008);
+  box(body, 'drl_channel', [2.06, .046, .028], [0, .978, -half - .006], seal, .004);
+  tube(body, 'continuous_front_drl', [[-1.01, .978, -half - .022], [0, .988, -half - .030], [1.01, .978, -half - .022]], .011, blade, 64);
   for (const s of [-1, 1]) {
     box(body, 'projector_cluster', [.26, .053, .028], [s * .76, .55, -half - .012], trim, .015);
     for (let i = 0; i < 3; i++) box(body, 'headlight_module', [.051, .028, .013], [s * .76 + (i - 1) * .066, .55, -half - .030], white, .007);

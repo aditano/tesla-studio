@@ -6,7 +6,7 @@
   "up": "+Y",
   "vehicles": {
     "model-3": {
-      "bytes": 2609336,
+      "bytes": 2609408,
       "triangles": 161752,
       "meshes": 91,
       "length": 4.72,
@@ -30,12 +30,12 @@
       ]
     },
     "model-y": {
-      "bytes": 2594172,
-      "triangles": 160668,
-      "meshes": 92,
+      "bytes": 2552528,
+      "triangles": 158976,
+      "meshes": 91,
       "length": 4.794,
-      "width": 1.92,
-      "height": 1.621,
+      "width": 1.98,
+      "height": 1.624,
       "wheelbase": 2.8899999999999997,
       "precision": "principal dimensions referenced to Tesla owner manuals",
       "rig": [
@@ -54,9 +54,9 @@
       ]
     },
     "cybertruck": {
-      "bytes": 2127440,
-      "triangles": 117656,
-      "meshes": 84,
+      "bytes": 2216564,
+      "triangles": 120928,
+      "meshes": 97,
       "length": 5.6829,
       "width": 2.0316,
       "height": 1.794,
@@ -79,13 +79,13 @@
       ]
     },
     "cybercab": {
-      "bytes": 2489988,
-      "triangles": 153736,
-      "meshes": 77,
-      "length": 4.35,
-      "width": 1.84,
-      "height": 1.44,
-      "wheelbase": 2.63,
+      "bytes": 2264052,
+      "triangles": 141792,
+      "meshes": 76,
+      "length": 4.12,
+      "width": 1.8,
+      "height": 1.38,
+      "wheelbase": 2.4,
       "precision": "concept proportions estimated from photographs",
       "rig": [
         "body",

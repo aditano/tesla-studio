@@ -130,3 +130,8 @@ export const useStudio = create<StudioState>((set, get) => ({
       autoRotate: false,
     }),
 }));
+
+if (typeof window !== "undefined") {
+  (window as unknown as { __teslaStudio: typeof useStudio }).__teslaStudio =
+    useStudio;
+}
