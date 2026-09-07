@@ -163,3 +163,32 @@ for (const [model, entry] of Object.entries(authoredManifest.vehicles) as [strin
   instance.materials.forEach(m => m.dispose());
   console.log(`PASS: ${model}, compressed decode, ${triangles.toLocaleString()} triangles, ${meshes} meshes, named hinges and opening directions`);
 }
+
+// Validate the imported Highland, including real texture paths and its presentation rig.
+const { prepareHighland } = await import('../src/studio/vehicles/highland');
+const highlandBytes = await fs.readFile('public/models/highland/model.glb');
+const highlandJson = JSON.parse(highlandBytes.subarray(20, 20 + highlandBytes.readUInt32LE(12)).toString());
+for (const image of highlandJson.images) await fs.access('public/models/highland/' + image.uri);
+const textureManager = new THREE.LoadingManager();
+textureManager.addHandler(/\.(png|jpe?g)$/i, { load(_url: string, done: (t: THREE.Texture) => void) { const texture = new THREE.Texture(); queueMicrotask(() => done(texture)); return texture; } } as any);
+const highlandLoader = new RuntimeGLTFLoader(textureManager); highlandLoader.setMeshoptDecoder(decoder);
+const highlandSource = await highlandLoader.parseAsync(highlandBytes.buffer.slice(highlandBytes.byteOffset, highlandBytes.byteOffset + highlandBytes.byteLength), '');
+const highland = prepareHighland(highlandSource.scene);
+let originalTriangles = 0, importedTriangles = 0;
+highlandSource.scene.traverse(o => { if (o instanceof THREE.Mesh) originalTriangles += o.geometry.index!.count / 3; });
+highland.scene.traverse(o => { if (o instanceof THREE.Mesh) { checkGeometry(o.geometry); if (!o.userData.presentationDetail) importedTriangles += o.geometry.index!.count / 3; assert.ok(o.geometry.getAttribute('uv')); } });
+assert.equal(importedTriangles, originalTriangles, 'Rig must preserve every source triangle');
+assert.ok(originalTriangles > 150000);
+const size = new THREE.Box3().setFromObject(highland.scene).getSize(new THREE.Vector3());
+assert.ok(Math.abs(size.z - 4.72) < .001 && size.y > 1.35 && size.y < 1.5 && size.x < 2.15, 'Correct scale and orientation');
+for (const name of ['hood', 'tailgate', 'door_fl', 'door_fr', 'door_rl', 'door_rr', 'charge_port', 'wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
+ const node = highland.scene.getObjectByName(name)!;
+ assert.ok(node.children.length, `Highland rig missing ${name}`);
+}
+const highlandHood = highland.scene.getObjectByName('hood')!;
+const hoodHeight = new THREE.Box3().setFromObject(highlandHood).getCenter(new THREE.Vector3()).y;
+highlandHood.rotation.x = .82; highland.scene.updateMatrixWorld(true);
+assert.ok(new THREE.Box3().setFromObject(highlandHood).getCenter(new THREE.Vector3()).y > hoodHeight + .1);
+highland.materials.forEach(m => m.dispose());
+highland.scene.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
+console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and presentation rig`);

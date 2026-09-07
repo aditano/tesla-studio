@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type { Interior, Paint, Variant, PartId } from '../catalog';
 import { paintParams } from '../materials';
 import { useStudio } from '../store';
+import { prepareHighland } from './highland';
 const partNames: Record<string, PartId> = {
   door_fl: 'door-fl',
   door_fr: 'door-fr',
@@ -50,8 +51,8 @@ export function AuthoredVehicle({
 }) {
   const {
     scene: source
-  } = useGLTF(`${import.meta.env.BASE_URL}models/authored/${model}.glb`, false, true);
-  const instance = useMemo(() => cloneAuthored(source), [source]);
+  } = useGLTF(`${import.meta.env.BASE_URL}models/${model === "model-3" ? "highland/model.glb" : `authored/${model}.glb`}`, false, true);
+  const instance = useMemo(() => model === "model-3" ? prepareHighland(source) : cloneAuthored(source), [source, model]);
   const rig = useMemo(() => Object.fromEntries(['body', ...Object.keys(partNames)].map(name => [name, instance.scene.getObjectByName(name)])), [instance]);
   const feature = useStudio(s => s.demoFeature),
     open = useStudio(s => s.open),
@@ -86,7 +87,7 @@ export function AuthoredVehicle({
       if (o.name.startsWith('performance_spoiler')) o.visible = !!variant.spoiler;
     });
   }, [instance, paint, interior, variant, lights, lightBar, model]);
-  useEffect(() => () => instance.materials.forEach(m => m.dispose()), [instance]);
+  useEffect(() => () => { instance.materials.forEach(m => m.dispose()); if ('ownsGeometry' in instance) instance.scene.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); }); }, [instance]);
   useFrame((_, delta) => {
     const dt = Math.min(delta, .05);
     elapsed.current += dt;

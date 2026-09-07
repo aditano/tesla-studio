@@ -530,7 +530,7 @@ export function Studio() {
         <span>
           {heritage
             ? "Artist-built mesh · Original-generation design"
-            : "Original authored 3D asset"}
+            : s.modelId === "model-3" ? "Artist-built mesh · Highland" : "Original authored 3D asset"}
           <b> / </b>Unofficial Tesla visualization
         </span>
       </footer>
@@ -578,13 +578,13 @@ export function Studio() {
                   to the exterior.
                 </p>
                 <p>
-                  Heritage models use detailed artist-created geometry.
-                  Highland, Juniper, Cybertruck and Cybercab use original
+                  Highland and heritage models use artist-created geometry.
+                  Juniper, Cybertruck and Cybercab use original
                   authored 3D assets with separate panels and fitted interiors. Trim treatments, paints and articulated panels
                   are illustrative, not factory CAD or a current ordering guide.
                 </p>
                 <p>
-                  Model 3 and Model S meshes by{" "}
+                  Original-generation Model 3 and Model S meshes by{" "}
                   <a
                     href="https://sketchfab.com/Steven007"
                     target="_blank"
@@ -614,6 +614,11 @@ export function Studio() {
                     Model S credit
                   </a>
                   .
+                </p>
+                <p>
+                  Highland mesh by <a href="https://sketchfab.com/RBLXSupercars" target="_blank" rel="noreferrer">RBLXSupercars</a>,
+                  shared by brandonleong28, under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.
+                  Adapted with compression, material controls and an approximate presentation rig. <a href={`${import.meta.env.BASE_URL}models/highland/CREDITS.md`}>Highland credits</a>.
                 </p>
                 <p>
                   Tesla and vehicle names are trademarks of Tesla, Inc. This
