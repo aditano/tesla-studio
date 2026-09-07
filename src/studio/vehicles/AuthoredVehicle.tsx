@@ -106,17 +106,46 @@ export function AuthoredVehicle({
           color: new THREE.Color(p.color),
           sheenColor: new THREE.Color(p.sheenColor),
         });
+        m.clearcoat = p.clearcoat;
+        m.clearcoatRoughness = p.clearcoatRoughness;
+        m.envMapIntensity = p.envMapIntensity;
+        m.sheen = p.sheen;
+        m.sheenRoughness = p.sheenRoughness;
         m.anisotropy = paint.finish === "stainless" ? 0.65 : 0;
       }
-      if (m.name === "interior_leather") m.color.set(interior.leather);
+      if (m.name === "interior_leather") {
+        m.color.set(interior.leather);
+        m.sheen = 0.45;
+        m.sheenRoughness = 0.36;
+        m.sheenColor.set(interior.leather);
+        m.roughness = 0.52;
+        m.metalness = 0;
+        m.envMapIntensity = 0.7;
+      }
       if (m.name === "brake_caliper") m.color.set(variant.caliper);
       if (m.name === "wheel_finish")
         m.color.set(variant.spoiler ? "#333941" : "#555e67");
-      if (m.name === "headlight_led") m.emissiveIntensity = lights ? 2.5 : 0;
-      if (m.name === "signature_led") m.emissiveIntensity = lightBar ? 2.5 : 0;
+      if (m.name === "headlight_led") {
+        m.emissive.set("#edf5ff");
+        m.emissiveIntensity = lights ? 2.5 : 0;
+        m.metalness = 0.12;
+        m.roughness = 0.2;
+      }
+      if (m.name === "signature_led") {
+        m.emissive.set("#e8f1ff");
+        m.emissiveIntensity = lightBar ? 2.4 : 0;
+        m.metalness = 0.12;
+        m.roughness = 0.18;
+      }
+      if (m.name === "taillight_led") {
+        m.emissive.set("#ed1828");
+        m.emissiveIntensity = lights ? 1.45 : 0.12;
+        m.metalness = 0.16;
+        m.roughness = 0.24;
+      }
       if (m.name === "glass" || m.name === "lamp_lens") {
         m.transparent = true;
-        m.opacity = m.name === "glass" ? 0.3 : 0.55;
+        m.opacity = m.name === "glass" ? 0.3 : 0.48;
         m.transmission = 0;
         m.thickness = 0;
         m.roughness = 0.06;
@@ -125,7 +154,12 @@ export function AuthoredVehicle({
         m.clearcoatRoughness = 0.05;
         m.depthWrite = false;
         m.envMapIntensity = 1.35;
+        if (m.name === "lamp_lens") {
+          m.emissive.set("#9eb4c6");
+          m.emissiveIntensity = lights ? 0.12 : 0;
+        }
       }
+      m.needsUpdate = true;
     });
     instance.scene.traverse((o) => {
       if (o.name.startsWith("wheel_sport"))
@@ -136,7 +170,6 @@ export function AuthoredVehicle({
         o.visible = !!variant.spoiler;
       if (
         !highland &&
-        !imported &&
         /^wheel_(fl|fr|rl|rr)$/.test(o.name) &&
         o.parent === instance.scene
       ) {
@@ -147,7 +180,7 @@ export function AuthoredVehicle({
         o.position.y = variant.wheelRadius;
       }
     });
-  }, [instance, paint, interior, variant, lights, lightBar, model]);
+  }, [instance, paint, interior, variant, lights, lightBar, highland, model]);
   useEffect(
     () => () => {
       instance.materials.forEach((m) => m.dispose());

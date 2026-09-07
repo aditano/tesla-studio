@@ -228,7 +228,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Model 3",
     tag: "Highland",
     marketNote:
-      "North America 2026 presentation. Paint and wheel names follow Tesla's US Design Studio; availability by trim is illustrative.",
+      "North America 2026 presentation. Paint and wheel names match Tesla's US Design Studio; which trims offer them is illustrative. Licensed artist mesh with a static body — door, hood, liftgate and charge-port tours are camera studies, not hinged panels.",
     variants: [
       {
         id: "rwd",
@@ -302,7 +302,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Model Y",
     tag: "Juniper",
     marketNote:
-      "Juniper mesh by BloxBloger on Sketchfab, CC BY-NC 4.0. Static body; panel tours are camera studies.",
+      "Juniper mesh by BloxBloger on Sketchfab, CC BY-NC 4.0. Static body; panel tours are camera studies. North America 2026 presentation names; trim availability is illustrative.",
     variants: [
       {
         id: "rwd",
@@ -351,7 +351,7 @@ export const VEHICLES: VehicleDef[] = [
       {
         id: "trunk",
         label: "Liftgate",
-        hint: "Hands-free cargo",
+        hint: "Rear cargo",
         cameraOnly: true,
       },
       {
@@ -369,7 +369,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Cybertruck",
     tag: "Exoskeleton",
     marketNote:
-      "Original authored 3D study with articulated panels and suspension. Proportions and trim details are illustrative, not factory CAD.",
+      "Original authored 3D study with articulated panels and suspension. Principal dimensions follow the owner manual; trim details are illustrative, not factory CAD.",
     variants: [
       {
         id: "awd",
@@ -436,7 +436,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Cybercab",
     tag: "Robotaxi",
     marketNote:
-      "Concept two-seater. Proportions estimated from reveal imagery. Not a production specification.",
+      "Concept two-seater. Proportions estimated from reveal imagery. Illustrative study — not a production specification.",
     variants: [
       {
         id: "cab",
@@ -526,7 +526,8 @@ VEHICLES.unshift(
       },
     ],
     interiors: [INTERIORS.black, INTERIORS.white],
-    marketNote: "Original-generation artist mesh. Not Highland.",
+    marketNote:
+      "Original-generation artist mesh with an approximate hinged presentation rig. Not Highland.",
   },
   {
     ...VEHICLES[0],
@@ -555,7 +556,8 @@ VEHICLES.unshift(
       },
     ],
     interiors: [INTERIORS.black, INTERIORS.cream],
-    marketNote: "Original-generation artist mesh. Not Plaid.",
+    marketNote:
+      "Original-generation artist mesh with an approximate hinged presentation rig. Not Plaid.",
   },
 );
 

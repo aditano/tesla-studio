@@ -26,6 +26,32 @@ for (const vehicle of VEHICLES) {
   const paint = useStudio.getState().exteriorId;
   useStudio.getState().setExterior("invalid");
   assert.equal(useStudio.getState().exteriorId, paint);
+  const overview = shotFor(vehicle.id, "overview");
+  assert.ok(overview.position && overview.target, `${vehicle.id}: overview shot`);
+  assert.ok(overview.position[1] > 0.5, `${vehicle.id}: overview camera above the floor`);
+}
+const byId = (id: string) => {
+  const found = VEHICLES.find((v) => v.id === id);
+  assert.ok(found, id);
+  return found!;
+};
+for (const id of ["doors", "frunk", "trunk", "charge"] as const) {
+  assert.equal(byId("model-3").features.find((f) => f.id === id)?.cameraOnly, true, `Highland ${id} must be camera-only`);
+  assert.equal(byId("model-y").features.find((f) => f.id === id)?.cameraOnly, true, `Juniper ${id} must be camera-only`);
+}
+for (const id of ["model-3-heritage", "model-s-heritage"] as const) {
+  assert.ok(byId(id).features.every((f) => !f.cameraOnly), `${id} features must not be camera-only`);
+}
+assert.match(byId("cybercab").marketNote ?? "", /concept/i, "Cybercab marketNote must mention concept");
+assert.ok(!byId("cybercab").features.some((f) => ["charge", "trunk", "suspension", "tonneau"].includes(f.id)), "Cybercab must not invent production features");
+assert.ok(!byId("cybertruck").features.some((f) => f.id === "doors"), "Cybertruck has no doors tour");
+assert.match(byId("cybertruck").marketNote ?? "", /authored/i, "Cybertruck marketNote must mention the authored study");
+assert.match(byId("cybertruck").marketNote ?? "", /illustrative/i, "Cybertruck marketNote must stay illustrative");
+assert.deepEqual(shotFor("model-3-heritage", "suspension"), SHOTS.suspension, "shotFor must fall back to SHOTS");
+for (const vehicle of VEHICLES) {
+  const interior = shotFor(vehicle.id, "interior");
+  assert.ok(interior.position[1] > 0.8, `${vehicle.id}: interior camera must stay above the floor`);
+  assert.ok(Math.abs(interior.position[0]) < 0.7, `${vehicle.id}: interior camera must stay in cabin width`);
 }
 useStudio.getState().setModel("model-3");
 useStudio.getState().setVariant("p");

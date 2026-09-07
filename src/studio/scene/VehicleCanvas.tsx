@@ -51,7 +51,7 @@ function CinematicControls() {
         .sub(target)
         .multiplyScalar(span * (size.width < 768 ? 1.28 : 1))
         .add(target);
-      end.y = Math.max(end.y, 0.55);
+      end.y = Math.max(end.y, 0.62);
     }
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
@@ -73,6 +73,9 @@ function CinematicControls() {
     const t = f.duration === 0 ? 1 : Math.min(1, f.elapsed / f.duration);
     const e = t * t * t * (t * (t * 6 - 15) + 10);
     camera.position.lerpVectors(f.start, f.end, e);
+    if (feature !== "interior") {
+      camera.position.y = Math.max(camera.position.y, 0.45);
+    }
     c.target.lerpVectors(f.from, f.target, e);
     c.update();
     if (t === 1) flight.current = null;
@@ -86,10 +89,10 @@ function CinematicControls() {
       dampingFactor={0.08}
       autoRotate={autoRotate && !feature}
       autoRotateSpeed={0.45}
-      minDistance={feature === "interior" ? 0.25 : 3.4}
+      minDistance={feature === "interior" ? 0.25 : 3.8}
       maxDistance={18}
       minPolarAngle={0.12}
-      maxPolarAngle={Math.PI / 2 - 0.025}
+      maxPolarAngle={Math.PI / 2 - 0.04}
       onStart={() => {
         flight.current = null;
         useStudio.getState().setAutoRotate(false);
@@ -99,81 +102,124 @@ function CinematicControls() {
   );
 }
 
-function Lighting() {
+function ToneMap() {
+  const mode = useStudio((s) => s.environment);
+  const gl = useThree((s) => s.gl);
+  const exposure =
+    mode === "daylight" ? 0.96 : mode === "midnight" ? 0.88 : 1.03;
+  useEffect(() => {
+    gl.toneMapping = THREE.ACESFilmicToneMapping;
+    gl.toneMappingExposure = exposure;
+  }, [gl, exposure]);
+  return null;
+}
+
+function Lighting({ high }: { high: boolean }) {
   const mode = useStudio((s) => s.environment);
   const day = mode === "daylight",
     night = mode === "midnight";
+  const bg = day ? "#9aa3ab" : night ? "#050810" : "#1a1f26";
   return (
     <>
-      <color
-        attach="background"
-        args={[day ? "#a4adb4" : night ? "#060b15" : "#22272e"]}
-      />
-      <fog
-        attach="fog"
-        args={[day ? "#a4adb4" : night ? "#060b15" : "#22272e", 16, 48]}
-      />
+      <color attach="background" args={[bg]} />
+      <fog attach="fog" args={[bg, day ? 20 : 15, day ? 56 : 44]} />
       <hemisphereLight
-        intensity={day ? 1.05 : 0.48}
-        color="#e8eef6"
-        groundColor="#3a3c42"
+        intensity={day ? 0.82 : night ? 0.2 : 0.36}
+        color={day ? "#eef3f8" : night ? "#8ea2be" : "#dce6f0"}
+        groundColor={day ? "#61666d" : night ? "#080a0e" : "#26292e"}
       />
       <directionalLight
-        position={[-3.4, 7.2, -4.6]}
-        intensity={day ? 2.4 : 1.45}
-        color={day ? "#fff3df" : "#edf2ff"}
+        position={[-3.2, 8, -4.2]}
+        intensity={day ? 1.75 : night ? 0.42 : 1.2}
+        color={day ? "#fff1d6" : night ? "#b7c6de" : "#f3f6ff"}
         castShadow
         shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.00018}
-        shadow-camera-left={-7}
-        shadow-camera-right={7}
-        shadow-camera-top={7}
-        shadow-camera-bottom={-7}
+        shadow-bias={-0.00022}
+        shadow-normalBias={0.022}
+        shadow-camera-near={1}
+        shadow-camera-far={24}
+        shadow-camera-left={-6.5}
+        shadow-camera-right={6.5}
+        shadow-camera-top={6.5}
+        shadow-camera-bottom={-6.5}
       />
       <directionalLight
-        position={[4.2, 3.4, 2.8]}
-        intensity={day ? 0.55 : 0.4}
-        color={night ? "#8aa7d6" : "#fff4ea"}
+        position={[4.4, 3.2, 3.2]}
+        intensity={day ? 0.48 : night ? 0.18 : 0.32}
+        color={night ? "#7f9ac4" : "#fff4ea"}
       />
-      <Environment resolution={256} frames={1} key={mode}>
+      {!day && (
+        <directionalLight
+          position={[1.2, 2.4, -5.5]}
+          intensity={night ? 0.12 : 0.16}
+          color={night ? "#d4a898" : "#ffe8d2"}
+        />
+      )}
+      <Environment resolution={high ? 512 : 256} frames={1} key={mode}>
         <Lightformer
           form="rect"
-          intensity={day ? 4 : 8}
-          position={[0, 6.2, -1.4]}
+          intensity={day ? 3.2 : night ? 1.6 : 3.8}
+          position={[0, 7.2, 0]}
           rotation={[Math.PI / 2, 0, 0]}
-          scale={[12, 3.2, 1]}
+          scale={day ? [18, 12, 1] : [14, 6, 1]}
           color="#ffffff"
         />
         <Lightformer
           form="rect"
-          intensity={day ? 2.2 : 5}
-          position={[-6, 2.8, 0]}
+          intensity={day ? 1.4 : night ? 3.4 : 7.2}
+          position={[0, 7, -0.8]}
+          rotation={[Math.PI / 2, 0, 0]}
+          scale={[18, day ? 1.6 : 0.28, 1]}
+          color="#ffffff"
+        />
+        <Lightformer
+          form="rect"
+          intensity={day ? 1.5 : night ? 2.6 : 5.4}
+          position={[-6.4, 2.1, 0.2]}
           rotation={[0, Math.PI / 2, 0]}
-          scale={[10, 1.4, 1]}
-          color={night ? "#78a8ff" : "#e8efff"}
+          scale={[12, day ? 2.4 : 0.42, 1]}
+          color={night ? "#6d8fbf" : "#e7eeff"}
         />
         <Lightformer
           form="rect"
-          intensity={day ? 2.2 : 5.5}
-          position={[6, 2.2, 1]}
+          intensity={day ? 1.4 : night ? 2.2 : 4.8}
+          position={[6.4, 1.8, 0.6]}
           rotation={[0, -Math.PI / 2, 0]}
-          scale={[9, 0.9, 1]}
-          color={night ? "#ef8780" : "#fff4e8"}
+          scale={[11, day ? 2 : 0.36, 1]}
+          color={night ? "#c9847a" : "#fff3e6"}
         />
         <Lightformer
           form="rect"
-          intensity={3.4}
-          position={[0, 3, 7]}
+          intensity={day ? 2 : night ? 1.1 : 2.2}
+          position={[0, 3.4, 8.2]}
           rotation={[0, Math.PI, 0]}
-          scale={[7, 2.2, 1]}
+          scale={[8, 2.6, 1]}
           color="#ffffff"
         />
         <Lightformer
           form="rect"
-          intensity={1.8}
-          position={[0, 2.4, -8]}
-          scale={[6, 3.2, 1]}
+          intensity={day ? 1.5 : night ? 1.4 : 2}
+          position={[0, 2.6, -8.5]}
+          scale={[7, 3, 1]}
           color="#ffffff"
+        />
+        {!day && (
+          <Lightformer
+            form="ring"
+            intensity={night ? 1.4 : 2.4}
+            position={[0, 5.6, -1.2]}
+            rotation={[Math.PI / 2, 0, 0]}
+            scale={7}
+            color="#ffffff"
+          />
+        )}
+        <Lightformer
+          form="rect"
+          intensity={day ? 0.7 : night ? 0.18 : 0.35}
+          position={[0, -0.35, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={[10, 10, 1]}
+          color={day ? "#c5cad0" : "#7a8088"}
         />
       </Environment>
     </>
@@ -181,6 +227,8 @@ function Lighting() {
 }
 function Floor({ high }: { high: boolean }) {
   const mode = useStudio((s) => s.environment);
+  const day = mode === "daylight",
+    night = mode === "midnight";
   return (
     <>
       <mesh
@@ -191,24 +239,25 @@ function Floor({ high }: { high: boolean }) {
         <planeGeometry args={[120, 120]} />
         <MeshReflectorMaterial
           resolution={high ? 1024 : 512}
-          blur={[250, 90]}
-          mixBlur={0.85}
-          mixStrength={mode === "midnight" ? 12 : 5}
-          roughness={0.8}
-          metalness={0.25}
-          color={mode === "daylight" ? "#a1a6ac" : "#30343b"}
-          mirror={0.15}
-          depthScale={0.5}
+          blur={[320, 110]}
+          mixBlur={0.92}
+          mixStrength={night ? 1.8 : day ? 3.1 : 2.4}
+          mixContrast={0.88}
+          roughness={night ? 0.92 : day ? 0.84 : 0.88}
+          metalness={night ? 0.1 : day ? 0.12 : 0.16}
+          color={day ? "#8b9198" : night ? "#14171c" : "#2a2e34"}
+          mirror={night ? 0.04 : day ? 0.08 : 0.06}
+          depthScale={0.42}
           minDepthThreshold={0.4}
           maxDepthThreshold={1.4}
         />
       </mesh>
       <ContactShadows
-        position={[0, 0.001, 0]}
-        opacity={0.58}
-        scale={14}
-        blur={2.6}
-        far={5}
+        position={[0, 0.002, 0]}
+        opacity={night ? 0.7 : day ? 0.44 : 0.56}
+        scale={15}
+        blur={2.15}
+        far={4.2}
         resolution={high ? 1024 : 512}
         color="#000000"
       />
@@ -239,6 +288,32 @@ function ContextGuard() {
   }, [gl]);
   return null;
 }
+function PostFX({ high }: { high: boolean }) {
+  const mode = useStudio((s) => s.environment);
+  if (!high) return null;
+  const day = mode === "daylight",
+    night = mode === "midnight";
+  return (
+    <EffectComposer multisampling={0} enableNormalPass={false}>
+      <N8AO
+        aoRadius={0.28}
+        intensity={night ? 0.9 : day ? 0.62 : 0.72}
+        halfRes
+      />
+      <Bloom
+        luminanceThreshold={2.2}
+        luminanceSmoothing={0.22}
+        intensity={0.14}
+        mipmapBlur
+      />
+      <Vignette
+        eskil={false}
+        offset={night ? 0.32 : day ? 0.44 : 0.36}
+        darkness={night ? 0.4 : day ? 0.18 : 0.3}
+      />
+    </EffectComposer>
+  );
+}
 export function VehicleCanvas() {
   const quality = useStudio((s) => s.quality);
   const [narrow, setNarrow] = useState(() => window.innerWidth < 768);
@@ -257,7 +332,7 @@ export function VehicleCanvas() {
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.05,
+        toneMappingExposure: 1.03,
         alpha: false,
         powerPreference: "high-performance",
         preserveDrawingBuffer: true,
@@ -270,19 +345,14 @@ export function VehicleCanvas() {
       }
     >
       <ContextGuard />
-      <Lighting />
+      <ToneMap />
+      <Lighting high={high} />
       <Suspense fallback={<Loading />}>
         <ActiveVehicle />
       </Suspense>
       <Floor high={high} />
       <CinematicControls />
-      {high ? (
-        <EffectComposer multisampling={0} enableNormalPass={false}>
-          <N8AO aoRadius={0.35} intensity={1.05} halfRes />
-          <Bloom luminanceThreshold={2.2} intensity={0.14} mipmapBlur />
-          <Vignette eskil={false} offset={0.38} darkness={0.28} />
-        </EffectComposer>
-      ) : null}
+      <PostFX high={high} />
     </Canvas>
   );
 }

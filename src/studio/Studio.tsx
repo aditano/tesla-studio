@@ -86,6 +86,19 @@ const cameraOnlyCopy: Record<string, string> = {
     "A closer look at the bed cover. The source mesh has no separate tonneau hinge, so the panel stays closed.",
 };
 
+function featureCaption(
+  feature: { id: string; cameraOnly?: boolean },
+  modelId: string,
+) {
+  if (feature.cameraOnly)
+    return cameraOnlyCopy[feature.id] ?? featureCopy[feature.id];
+  if (feature.id === "trunk" && modelId === "cybertruck")
+    return "Explore the pickup bed as the tailgate lowers and the tonneau cover retracts.";
+  if (feature.id === "charge" && modelId === "cybertruck")
+    return "The charge port sits on the driver-side bed wall. Watch the inlet cover open.";
+  return featureCopy[feature.id];
+}
+
 export function Studio() {
   const s = useStudio();
   const def = useMemo(() => {
@@ -324,13 +337,7 @@ export function Studio() {
             / {String(def.features.length).padStart(2, "0")}
           </p>
           <h2>{active.label}</h2>
-          <p>
-            {active.cameraOnly
-              ? (cameraOnlyCopy[active.id] ?? featureCopy[active.id])
-              : active.id === "trunk" && s.modelId === "cybertruck"
-                ? "Explore the pickup bed as the tailgate lowers and the tonneau cover retracts."
-                : featureCopy[active.id]}
-          </p>
+          <p>{featureCaption(active, s.modelId)}</p>
           <div className="caption-actions">
             <button onClick={() => next(-1)} aria-label="Previous feature">
               <ChevronLeft size={17} />
@@ -511,7 +518,8 @@ export function Studio() {
                 ))}
               </div>
               <p className="feature-note">
-                Select a feature to move the camera and watch its demonstration.
+                Select a feature to move the camera. Articulated vehicles also
+                play a short demonstration.
               </p>
             </div>
           )}
@@ -550,7 +558,7 @@ export function Studio() {
         <span>
           <i /> LIVE 3D
         </span>
-        <span>
+        <span title={def.marketNote}>
           {heritage
             ? "Artist-built mesh · Original-generation design"
             : s.modelId === "model-3"
@@ -605,18 +613,19 @@ export function Studio() {
               <>
                 <p>
                   Drag to orbit. Pinch or scroll to zoom. Select a feature for a
-                  camera move and animated demonstration. Press Escape to return
-                  to the exterior.
+                  camera move. Articulated vehicles also play a short
+                  demonstration. Press Escape to return to the exterior.
                 </p>
                 <p>
                   Highland uses a licensed artist mesh with a static body: door,
-                  hood and liftgate demonstrations are camera studies, not hinged
-                  panels. Juniper uses BloxBloger’s 2025 Model Y (CC BY-NC).
-                  Highland and Juniper have static bodies. Cybertruck is an
-                  original authored study with articulated panels and suspension.
-                  Cybercab is an original authored concept study. Trim treatments
-                  and paints are illustrative, not factory CAD or a current
-                  ordering guide.
+                  hood and liftgate tours are camera studies, not hinged panels.
+                  Juniper uses BloxBloger’s 2025 Model Y (CC BY-NC) and is also
+                  static. Cybertruck is an original authored study with
+                  articulated panels and suspension — illustrative, not factory
+                  CAD. Cybercab is an original authored concept study, not a
+                  production specification. Paint and wheel names follow the
+                  North America 2026 Design Studio; trim availability is
+                  illustrative.
                 </p>
                 <p>
                   Original-generation Model 3 and Model S meshes by{" "}

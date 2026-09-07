@@ -1,6 +1,103 @@
 import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
+function highlandRole(name: string, x: number, y: number, z: number) {
+  let role = name;
+  if (name === "Geohoodsub00021Mtl") role = "exterior_paint";
+  if (name === "Georimblurlfsub021Mtl") role = "wheel_finish";
+  // The artist shares this white material between the headlights and
+  // seat upholstery. Keep the lamps white while recoloring the cabin.
+  if (name === "Ln7Mtl") {
+    if (z < -1.75 && y > 0.45 && y < 0.95) role = "headlight_led";
+    else if (z > -0.6) role = "interior_leather";
+  }
+  if (name === "Geodoorl2intsub651Mtl") role = "interior_leather";
+  if (name === "Geodoorlintsub400251Mtl") role = "interior_leather";
+  if (
+    /Georimblurlfsub01/.test(name) &&
+    Math.abs(x) < 0.63 &&
+    z > -0.55 &&
+    z < 1.07 &&
+    y > 0.32 &&
+    y < 1.03
+  )
+    role = "interior_leather";
+  if (/window|extwindow|Geodoorl2sub31|Geodoorr2sub31/i.test(name))
+    role = "glass";
+  if (name === "Ln12Mtl") role = "taillight_led";
+  if (/Tire1/.test(name)) role = "tire_rubber";
+  return role;
+}
+
+function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role: string) {
+  material.side = THREE.DoubleSide;
+  if (role === "exterior_paint") {
+    material.metalness = 0.28;
+    material.roughness = 0.22;
+    material.clearcoat = 1;
+    material.clearcoatRoughness = 0.06;
+    material.envMapIntensity = 1.15;
+  }
+  if (role === "wheel_finish") {
+    material.metalness = 0.9;
+    material.roughness = 0.28;
+    material.envMapIntensity = 1.05;
+  }
+  if (role === "tire_rubber") {
+    material.metalness = 0;
+    material.roughness = 0.9;
+    material.envMapIntensity = 0.22;
+  }
+  if (role === "interior_leather") {
+    material.metalness = 0;
+    material.roughness = 0.55;
+    material.sheen = 0.42;
+    material.sheenRoughness = 0.4;
+    material.sheenColor.set("#c8c4bc");
+    material.envMapIntensity = 0.6;
+  }
+  if (role === "glass" || material.transparent) {
+    material.transparent = true;
+    material.roughness = 0.07;
+    material.metalness = 0.04;
+    material.opacity = 0.34;
+    material.transmission = 0;
+    material.thickness = 0;
+    material.clearcoat = 1;
+    material.clearcoatRoughness = 0.04;
+    material.depthWrite = false;
+    material.envMapIntensity = 1.3;
+  }
+  if (name === "Geohoodsub00031Mtl") {
+    material.metalness = 0.92;
+    material.roughness = 0.2;
+    material.envMapIntensity = 1.2;
+  }
+  if (/Geocockpithrsub000/.test(name)) material.emissiveIntensity = 0.6;
+  if (role === "headlight_led") {
+    material.emissive.set("#edf5ff");
+    material.emissiveIntensity = 2.5;
+    material.metalness = 0.12;
+    material.roughness = 0.2;
+    material.transparent = false;
+    material.opacity = 1;
+  }
+  if (role === "taillight_led") {
+    material.emissive.set("#ed1828");
+    material.emissiveIntensity = 1.45;
+    material.metalness = 0.18;
+    material.roughness = 0.24;
+    material.transparent = false;
+    material.opacity = 1;
+  }
+  if (name === "Ln1Mtl") {
+    material.emissive.set("#d6743a");
+    material.emissiveIntensity = 0.55;
+    material.metalness = 0.25;
+    material.roughness = 0.28;
+  }
+}
+
 /** Presentation rig for RBLXSupercars' static Highland mesh.
  * The source is a merged Sketchfab export, not a factory hinge rig.
  * Only wheels are separated. Body paint stays intact so door/hood
@@ -64,26 +161,7 @@ export function prepareHighland(source: THREE.Group) {
       ) {
         part = "wheel_" + (z < 0 ? "f" : "r") + (x < 0 ? "l" : "r");
       }
-      let role = name;
-      if (name === "Geohoodsub00021Mtl") role = "exterior_paint";
-      if (name === "Georimblurlfsub021Mtl") role = "wheel_finish";
-      // The artist shares this white material between the headlights and
-      // seat upholstery. Keep the lamps white while recoloring the cabin.
-      if (name === "Ln7Mtl") {
-        if (z < -1.75 && y > 0.45 && y < 0.95) role = "headlight_led";
-        else if (z > -0.6) role = "interior_leather";
-      }
-      if (name === "Geodoorl2intsub651Mtl") role = "interior_leather";
-      if (
-        /Georimblurlfsub01/.test(name) &&
-        Math.abs(x) < 0.63 &&
-        z > -0.55 &&
-        z < 1.07 &&
-        y > 0.32 &&
-        y < 1.03
-      )
-        role = "interior_leather";
-      if (/window|extwindow/i.test(name)) role = "glass";
+      const role = highlandRole(name, x, y, z);
       const key = part + "|" + role;
       const list = buckets.get(key) ?? [];
       list.push(...ids);
@@ -97,32 +175,7 @@ export function prepareHighland(source: THREE.Group) {
         material = new THREE.MeshPhysicalMaterial();
         THREE.MeshStandardMaterial.prototype.copy.call(material, original);
         material.name = role;
-        material.side = THREE.DoubleSide;
-        if (role === "exterior_paint") {
-          material.metalness = 0.28;
-          material.roughness = 0.22;
-          material.clearcoat = 1;
-          material.clearcoatRoughness = 0.06;
-        }
-        if (role === "wheel_finish") {
-          material.metalness = 0.9;
-          material.roughness = 0.28;
-        }
-        if (role === "glass" || material.transparent) {
-          material.transparent = true;
-          material.roughness = 0.08;
-          material.metalness = 0.05;
-          material.opacity = 0.38;
-          material.transmission = 0;
-          material.clearcoat = 1;
-          material.clearcoatRoughness = 0.04;
-          material.depthWrite = false;
-        }
-        if (/Geocockpithrsub000/.test(name)) material.emissiveIntensity = 0.6;
-        if (role === "headlight_led") {
-          material.emissive.set("#edf5ff");
-          material.emissiveIntensity = 2.5;
-        }
+        treatHighland(material, name, role);
         materials.set(materialKey, material);
       }
       const selected = geometry.clone();
@@ -152,10 +205,11 @@ export function prepareHighland(source: THREE.Group) {
     clearcoat: 1,
   });
   materials.set("performance_spoiler", carbon);
+  // Deck skin at this station is ~1.035 m; sit the lip just above it.
   const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.69, 0.95, 2.16),
-    new THREE.Vector3(0, 0.977, 2.18),
-    new THREE.Vector3(0.69, 0.95, 2.16),
+    new THREE.Vector3(-0.71, 1.046, 2.205),
+    new THREE.Vector3(0, 1.058, 2.225),
+    new THREE.Vector3(0.71, 1.046, 2.205),
   ]);
   const lip = new THREE.Mesh(
     new THREE.TubeGeometry(curve, 40, 0.012, 6, false),
