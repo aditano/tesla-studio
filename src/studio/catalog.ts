@@ -369,7 +369,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Cybertruck",
     tag: "Exoskeleton",
     marketNote:
-      "Sketchfab Cybertruck 2025 listing (Nieve5677, CC BY 4.0). Mid-poly source, static body. Not the Sketcher 380k production mesh.",
+      "Original authored 3D study with articulated panels and suspension. Proportions and trim details are illustrative, not factory CAD.",
     variants: [
       {
         id: "awd",
@@ -407,30 +407,29 @@ export const VEHICLES: VehicleDef[] = [
         id: "tonneau",
         label: "Tonneau",
         hint: "Power tonneau cover",
-        cameraOnly: true,
       },
       {
         id: "frunk",
         label: "Frunk",
         hint: "Front vault",
-        cameraOnly: true,
       },
       {
         id: "trunk",
         label: "Bed",
         hint: "Stainless vault",
-        cameraOnly: true,
       },
       { id: "headlights", label: "Headlights", hint: "Matrix projectors" },
       {
         id: "charge",
         label: "Charge port",
         hint: "Bed-side NACS inlet",
-        cameraOnly: true,
       },
       { id: "interior", label: "Inside the cabin", hint: "Yoke and vault interior" },
     ],
-    parts: [],
+    parts: [
+      "door-fl", "door-fr", "door-rl", "door-rr",
+      "frunk", "trunk", "charge", "tonneau",
+    ],
   },
   {
     id: "cybercab",

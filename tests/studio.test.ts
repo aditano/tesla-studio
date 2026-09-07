@@ -6,7 +6,7 @@ import { VEHICLES, featuresForVehicle } from "../src/studio/catalog";
 import { useStudio } from "../src/studio/store";
 import { SHOTS, shotFor } from "../src/studio/scene/shots";
 import { coachwork } from "../src/studio/vehicles/coachwork";
-import { prepareHeritage } from "../src/studio/vehicles/HeritageVehicle";
+import { prepareHeritage, pivots, heritageOpenAngles } from "../src/studio/vehicles/HeritageVehicle";
 for (const vehicle of VEHICLES) {
   useStudio.getState().setModel(vehicle.id);
   for (const variant of vehicle.variants) {
@@ -87,6 +87,23 @@ for (const model of ["model-3-heritage", "model-s-heritage"]) {
   const loader = new GLTFLoader(manager);
   const asset = await loader.parseAsync(JSON.stringify(json), "");
   const prepared = prepareHeritage(asset.scene, model);
+  // Use indexed vertices: partitioned geometries retain unused source vertices.
+  for (const panel of ["hood", "hatch"] as const) {
+    const point = new THREE.Vector3();
+    let closedY = 0, openY = 0, count = 0;
+    const rotation = new THREE.Matrix4().makeRotationX(heritageOpenAngles[panel]);
+    prepared.panels[panel].traverse(o => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const positions = o.geometry.getAttribute("position");
+      for (const i of o.geometry.index!.array) {
+        point.fromBufferAttribute(positions, i);
+        closedY += point.y + pivots[panel][1];
+        openY += point.applyMatrix4(rotation).y + pivots[panel][1];
+        count++;
+      }
+    });
+    assert.ok(openY / count > closedY / count + 0.1, `${model}/${panel} must open upward`);
+  }
   let triangles = 0;
   const box = new THREE.Box3();
   for (const [key, group] of Object.entries(prepared.panels)) {
@@ -181,6 +198,10 @@ textureManager.addHandler(/\.(png|jpe?g)$/i, { load(_url: string, done: (t: THRE
 const highlandLoader = new RuntimeGLTFLoader(textureManager); highlandLoader.setMeshoptDecoder(decoder);
 const highlandSource = await highlandLoader.parseAsync(highlandBytes.buffer.slice(highlandBytes.byteOffset, highlandBytes.byteOffset + highlandBytes.byteLength), '');
 const highland = prepareHighland(highlandSource.scene);
+assert.equal(highland.materials.get("Ln7Mtl|interior_leather")?.name, "interior_leather",
+  "Highland white seats must respond to interior selection");
+assert.equal(highland.materials.get("Ln7Mtl|headlight_led")?.name, "headlight_led",
+  "Shared white source material must retain independent headlights");
 let originalTriangles = 0, importedTriangles = 0;
 highlandSource.scene.traverse(o => { if (o instanceof THREE.Mesh) originalTriangles += o.geometry.index!.count / 3; });
 highland.scene.traverse(o => { if (o instanceof THREE.Mesh) { checkGeometry(o.geometry); if (!o.userData.presentationDetail) importedTriangles += o.geometry.index!.count / 3; assert.ok(o.geometry.getAttribute('uv')); if ((o.material as THREE.MeshPhysicalMaterial).name === 'glass') assert.equal((o.material as THREE.MeshPhysicalMaterial).transmission, 0); } });
@@ -232,3 +253,5 @@ for (const spec of [
   console.log(`PASS: ${spec.id}, ${triangles.toLocaleString()} triangles, ${size.x.toFixed(2)}x${size.y.toFixed(2)}x${size.z.toFixed(2)} m`);
 }
 
+
+await import("./model-imports.test");

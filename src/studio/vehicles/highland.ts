@@ -67,8 +67,12 @@ export function prepareHighland(source: THREE.Group) {
       let role = name;
       if (name === "Geohoodsub00021Mtl") role = "exterior_paint";
       if (name === "Georimblurlfsub021Mtl") role = "wheel_finish";
-      if (name === "Ln7Mtl" && z < -1.75 && y > 0.45 && y < 0.95)
-        role = "headlight_led";
+      // The artist shares this white material between the headlights and
+      // seat upholstery. Keep the lamps white while recoloring the cabin.
+      if (name === "Ln7Mtl") {
+        if (z < -1.75 && y > 0.45 && y < 0.95) role = "headlight_led";
+        else if (z > -0.6) role = "interior_leather";
+      }
       if (name === "Geodoorl2intsub651Mtl") role = "interior_leather";
       if (
         /Georimblurlfsub01/.test(name) &&

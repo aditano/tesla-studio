@@ -41,29 +41,38 @@ export function prepareImported(source: THREE.Group, model: string) {
 
   source.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
-    const original = (
-      Array.isArray(object.material) ? object.material[0] : object.material
-    ) as THREE.MeshPhysicalMaterial;
-    const role = original.name || "satin_trim";
-    let material = materials.get(role);
-    if (!material) {
-      material = original.clone();
-      material.name = role;
-      material.side = THREE.DoubleSide;
-      if (role === "glass" || role === "lamp_lens") {
-        material.transparent = true;
-        material.transmission = 0;
-        material.depthWrite = false;
+    const originals = Array.isArray(object.material)
+      ? object.material
+      : [object.material];
+    // Names describe customization roles, not material identity. Two trim
+    // materials can share a role while retaining different textures or finishes.
+    const copies = originals.map((original) => {
+      let material = materials.get(original.uuid);
+      if (!material) {
+        material = new THREE.MeshPhysicalMaterial();
+        if (original instanceof THREE.MeshPhysicalMaterial) material.copy(original);
+        else THREE.MeshStandardMaterial.prototype.copy.call(material, original);
+        material.name = original.name || "satin_trim";
+        material.side = THREE.DoubleSide;
+        if (material.name === "glass" || material.name === "lamp_lens") {
+          material.transparent = true;
+          material.transmission = 0;
+          material.depthWrite = false;
+        }
+        materials.set(original.uuid, material);
       }
-      materials.set(role, material);
-    }
-    const geometry = object.geometry.clone();
+      return material;
+    });
+    const material = Array.isArray(object.material) ? copies : copies[0];
+    // Flatten the hierarchy into the presentation rig without losing the
+    // source node's translation, rotation or scale.
+    const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
     const center = new THREE.Box3()
       .setFromObject(object)
       .getCenter(new THREE.Vector3());
     let part = "body";
     if (
-      /tire_rubber|wheel_finish|brake_rotor|brake_caliper/.test(role)
+      originals.every((m) => /^(tire_rubber|wheel_finish|brake_rotor|brake_caliper)$/.test(m.name))
     ) {
       let best = "";
       let bestDistance = 0.55;

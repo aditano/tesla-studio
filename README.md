@@ -8,7 +8,7 @@ An independent, noncommercial browser vehicle studio with configurable finishes,
 
 - Detailed artist-created original-generation Model 3 and Model S meshes, hosted in this repository.
 - Artist-created Highland with original textures, configurable materials and a static body (no torn door/hood cuts).
-- Juniper uses BloxBloger's Sketchfab 2025 Model Y (CC BY-NC, 307k triangles). Cybertruck uses the Sketchfab Cybertruck 2025 mesh (CC BY, 73k). Both are static bodies. Cybercab remains an original authored study.
+- Juniper uses BloxBloger's Sketchfab 2025 Model Y (CC BY-NC, 307k triangles). Juniper keeps a static body. Cybertruck and Cybercab use original authored studies with articulated panels and separate wheel, glass and lighting materials.
 - Model and trim selection, exterior colors, interior finishes, and trim-specific sport hardware.
 - Guided tours with eased camera moves followed by articulated demonstrations. Individual features can be selected, revisited, or exited.
 - Studio, daylight and midnight lighting with generated reflection environments, clearcoat materials, contact shadows, floor reflections and restrained postprocessing.
@@ -20,7 +20,7 @@ Drag to orbit; scroll or pinch to zoom. Select **Explore features** for an indiv
 
 ## Fidelity and scope
 
-This is a real-time WebGL showcase, **not an Unreal Engine renderer or a factory CAD configurator**. Highland uses a licensed artist mesh with 179,692 preserved triangles, original textures and approximately 4 MB of compressed geometry. Its body is kept intact: door, hood and liftgate tours are camera studies because the source is a merged export, not a hinge rig. Juniper uses BloxBloger's CC BY-NC Sketchfab mesh (307k triangles, ~5 MB compressed). Cybertruck uses Nieve5677's CC BY Sketchfab mesh (73k triangles); it is not the higher-detail Sketcher production model. Both of those imports keep a closed body. Cybercab remains an original authored study. Fine surface fidelity and physically accurate textures still limit photorealism.
+This is a real-time WebGL showcase, **not an Unreal Engine renderer or a factory CAD configurator**. Highland uses a licensed artist mesh with 179,692 preserved triangles, original textures and approximately 4 MB of compressed geometry. Its body is kept intact: door, hood and liftgate tours are camera studies because the source is a merged export, not a hinge rig. Juniper uses BloxBloger's CC BY-NC Sketchfab mesh (307k triangles, ~5 MB compressed). Juniper keeps a closed body. Cybertruck and Cybercab use original authored studies with working articulation. The archived Cybertruck import has a single steel material role across its parts and is not used by the viewer. Fine surface fidelity and physically accurate textures still limit photorealism.
 
 Heritage vehicles retain their actual older-generation labels. They are not passed off as Highland, Juniper or Plaid. Trim treatments, colors and interior selections are illustrative rather than a current Tesla ordering guide. No live pricing, range or performance figures are fabricated.
 

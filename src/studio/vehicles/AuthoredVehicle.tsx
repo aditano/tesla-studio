@@ -53,13 +53,11 @@ export function AuthoredVehicle({
   variant: Variant;
 }) {
   const highland = model === "model-3";
-  const imported = model === "model-y" || model === "cybertruck";
+  const imported = model === "model-y";
   const asset = highland
     ? "highland/model.glb"
     : imported
-      ? model === "model-y"
-        ? "juniper/model.glb"
-        : "cybertruck-import/model.glb"
+      ? "juniper/model.glb"
       : `authored/${model}.glb`;
   const { scene: source } = useGLTF(
     `${import.meta.env.BASE_URL}models/${asset}`,

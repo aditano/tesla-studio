@@ -27,18 +27,23 @@ const VehicleCanvas = lazy(() =>
 );
 
 class RenderBoundary extends Component<
-  { children: ReactNode },
+  { children: ReactNode; modelId: string },
   { failed: boolean }
 > {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
   }
+  componentDidUpdate(previous: Readonly<{ children: ReactNode; modelId: string }>) {
+    if (this.state.failed && previous.modelId !== this.props.modelId) {
+      this.setState({ failed: false });
+    }
+  }
   render() {
     return this.state.failed ? (
       <div className="render-error">
         <h2>The studio couldn’t load.</h2>
-        <p>Check your connection, then try again.</p>
+        <p>Choose another vehicle, or check your connection and reload.</p>
         <button onClick={() => location.reload()}>Reload studio</button>
       </div>
     ) : (
@@ -202,7 +207,7 @@ export function Studio() {
       className={`studio-app environment-${s.environment} ${sheet ? "sheet-open" : "sheet-closed"}`}
     >
       <div className="vehicle-stage">
-        <RenderBoundary>
+        <RenderBoundary modelId={s.modelId}>
           <Suspense
             fallback={
               <div className="boot">
@@ -322,7 +327,9 @@ export function Studio() {
           <p>
             {active.cameraOnly
               ? (cameraOnlyCopy[active.id] ?? featureCopy[active.id])
-              : featureCopy[active.id]}
+              : active.id === "trunk" && s.modelId === "cybertruck"
+                ? "Explore the pickup bed as the tailgate lowers and the tonneau cover retracts."
+                : featureCopy[active.id]}
           </p>
           <div className="caption-actions">
             <button onClick={() => next(-1)} aria-label="Previous feature">
@@ -551,7 +558,7 @@ export function Studio() {
               : s.modelId === "model-y"
                 ? "Sketchfab mesh · Juniper · static body"
                 : s.modelId === "cybertruck"
-                  ? "Sketchfab mesh · static body"
+                  ? "Original authored 3D study · articulated panels"
               : s.modelId === "cybercab"
                 ? "Concept study · estimated proportions"
                 : "Original authored 3D asset"}
@@ -605,10 +612,11 @@ export function Studio() {
                   Highland uses a licensed artist mesh with a static body: door,
                   hood and liftgate demonstrations are camera studies, not hinged
                   panels. Juniper uses BloxBloger’s 2025 Model Y (CC BY-NC).
-                  Cybertruck uses the Sketchfab “Cybertruck 2025” mesh (CC BY).
-                  Both are static bodies. Cybercab remains an original authored
-                  study. Trim treatments and paints are illustrative, not factory
-                  CAD or a current ordering guide.
+                  Highland and Juniper have static bodies. Cybertruck is an
+                  original authored study with articulated panels and suspension.
+                  Cybercab is an original authored concept study. Trim treatments
+                  and paints are illustrative, not factory CAD or a current
+                  ordering guide.
                 </p>
                 <p>
                   Original-generation Model 3 and Model S meshes by{" "}
@@ -684,22 +692,6 @@ export function Studio() {
                     rel="noreferrer"
                   >
                     CC BY-NC 4.0
-                  </a>
-                  . Cybertruck mesh from{" "}
-                  <a
-                    href="https://sketchfab.com/3d-models/tesla-cybertruck-2025-0fe4980c8cbc441382bfb7d4cf9f092e"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Nieve5677
-                  </a>
-                  , licensed{" "}
-                  <a
-                    href="https://creativecommons.org/licenses/by/4.0/"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    CC BY 4.0
                   </a>
                   . Adapted with scale, materials and compression.
                 </p>

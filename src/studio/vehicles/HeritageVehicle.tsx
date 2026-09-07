@@ -7,7 +7,7 @@ import type { Interior, Paint, Variant } from "../catalog";
 import { useStudio } from "../store";
 
 type Panel = "fixed" | "left" | "right" | "hood" | "hatch";
-const pivots: Record<Panel, [number, number, number]> = {
+export const pivots: Record<Panel, [number, number, number]> = {
   fixed: [0, 0, 0],
   left: [-0.82, 0.7, -0.85],
   right: [0.82, 0.7, -0.85],
@@ -99,6 +99,13 @@ export function prepareHeritage(source: THREE.Group, model: string) {
   return { panels, materials };
 }
 
+export const heritageOpenAngles = {
+  left: -1.05,
+  right: 1.05,
+  hood: 0.75,
+  hatch: -0.95,
+};
+
 export function HeritageVehicle({
   model,
   paint,
@@ -168,7 +175,7 @@ export function HeritageVehicle({
   );
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05);
-    for (const id of ["left", "right", "hood", "hatch"] as Panel[]) {
+    for (const id of ["left", "right", "hood", "hatch"] as const) {
       const g = refs.current[id];
       if (!g) continue;
       const door = id === "left" || id === "right";
@@ -177,21 +184,14 @@ export function HeritageVehicle({
         : id === "hood"
           ? feature === "frunk" || open.frunk
           : feature === "trunk" || open.trunk;
-      const angle = active
-        ? id === "left"
-          ? -1.05
-          : id === "right"
-            ? 1.05
-            : id === "hood"
-              ? -0.75
-              : 0.95
-        : 0;
+      const angle = active ? heritageOpenAngles[id] : 0;
       const axis = door ? "y" : "x";
       g.rotation[axis] = THREE.MathUtils.damp(g.rotation[axis], angle, 4, dt);
     }
   });
+  // Wheels are part of this static rig; lowering its root would bury the tires.
   return (
-    <group position={[0, -(variant.lowered ?? 0), 0]}>
+    <group>
       {(Object.keys(pivots) as Panel[]).map((id) => (
         <group
           key={id}
