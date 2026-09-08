@@ -1,5 +1,11 @@
 import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import {
+  HIGHLAND_PANEL_ORIGINS,
+  addPresentationPanels,
+  applyPaintHoles,
+  attachPanelGroups,
+} from "./panelRig";
 
 function highlandRole(name: string, x: number, y: number, z: number) {
   let role = name;
@@ -76,7 +82,7 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
   if (/Geocockpithrsub000/.test(name)) material.emissiveIntensity = 0.6;
   if (role === "headlight_led") {
     material.emissive.set("#edf5ff");
-    material.emissiveIntensity = 1.25;
+    material.emissiveIntensity = 4.8;
     material.metalness = 0.12;
     material.roughness = 0.2;
     material.transparent = false;
@@ -84,7 +90,7 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
   }
   if (role === "taillight_led") {
     material.emissive.set("#ed1828");
-    material.emissiveIntensity = 1.05;
+    material.emissiveIntensity = 3.2;
     material.metalness = 0.18;
     material.roughness = 0.24;
     material.transparent = false;
@@ -98,10 +104,9 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
   }
 }
 
-/** Presentation rig for RBLXSupercars' static Highland mesh.
- * The source is a merged Sketchfab export, not a factory hinge rig.
- * Only wheels are separated. Body paint stays intact so door/hood
- * demonstrations cannot tear the exterior. */
+/** Presentation rig for RBLXSupercars' Highland mesh.
+ * The source is a merged Sketchfab export. Wheels are separated; body
+ * paint stays intact. Click-to-open uses cutaway holes plus stand-in panels. */
 export function prepareHighland(source: THREE.Group) {
   source.updateMatrixWorld(true);
   const bounds = new THREE.Box3().setFromObject(source);
@@ -131,6 +136,7 @@ export function prepareHighland(source: THREE.Group) {
     groups[name] = group;
     scene.add(group);
   }
+  attachPanelGroups(body, groups, HIGHLAND_PANEL_ORIGINS);
   const materials = new Map<string, THREE.MeshPhysicalMaterial>();
   source.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
@@ -195,6 +201,8 @@ export function prepareHighland(source: THREE.Group) {
     }
     geometry.dispose();
   });
+  addPresentationPanels(groups, "highland", materials);
+  applyPaintHoles(materials);
   const spoiler = new THREE.Group();
   spoiler.name = "performance_spoiler";
   spoiler.userData.presentationDetail = true;
@@ -224,6 +232,6 @@ export function prepareHighland(source: THREE.Group) {
     scene,
     materials,
     ownsGeometry: true,
-    staticBody: true,
+    staticBody: false,
   };
 }

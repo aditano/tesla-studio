@@ -36,10 +36,14 @@ const byId = (id: string) => {
   assert.ok(found, id);
   return found!;
 };
-for (const id of ["doors", "frunk", "trunk", "charge"] as const) {
-  assert.equal(byId("model-3").features.find((f) => f.id === id)?.cameraOnly, true, `Highland ${id} must be camera-only`);
-  assert.equal(byId("model-y").features.find((f) => f.id === id)?.cameraOnly, true, `Juniper ${id} must be camera-only`);
+for (const id of ["doors", "frunk", "trunk"] as const) {
+  assert.equal(byId("model-3").features.find((f) => f.id === id)?.cameraOnly, undefined, `Highland ${id} must open`);
+  assert.equal(byId("model-y").features.find((f) => f.id === id)?.cameraOnly, undefined, `Juniper ${id} must open`);
 }
+assert.equal(byId("model-3").features.find((f) => f.id === "charge")?.cameraOnly, true, "Highland charge stays camera-only");
+assert.equal(byId("model-y").features.find((f) => f.id === "charge")?.cameraOnly, true, "Juniper charge stays camera-only");
+assert.ok(byId("model-3").parts.includes("door-fl"));
+assert.ok(byId("model-y").parts.includes("trunk"));
 for (const id of ["model-3-heritage", "model-s-heritage"] as const) {
   assert.ok(byId(id).features.every((f) => !f.cameraOnly), `${id} features must not be camera-only`);
 }
@@ -254,13 +258,15 @@ for (const name of ['body', 'wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
  const node = highland.scene.getObjectByName(name)!;
  assert.ok(node.children.length, `Highland rig missing ${name}`);
 }
-assert.ok(highland.staticBody, 'Highland must keep the artist body intact');
-for (const name of ['hood', 'tailgate', 'door_fl', 'charge_port']) {
- assert.equal(highland.scene.getObjectByName(name), undefined, `Highland must not invent a ${name} hinge`);
+assert.equal(highland.staticBody, false, 'Highland panels must hinge for click-to-open');
+for (const name of ['hood', 'tailgate', 'door_fl', 'door_fr', 'door_rl', 'door_rr']) {
+ assert.ok(highland.scene.getObjectByName(name), `Highland rig missing ${name}`);
 }
+assert.ok(highland.scene.getObjectByName('proxy_door_fl')?.userData.presentationDetail, 'Highland door stand-in');
+assert.ok(highland.scene.getObjectByName('hit_hood')?.userData.hitVolume, 'Highland hood click volume');
 highland.materials.forEach(m => m.dispose());
 highland.scene.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
-console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and static body`);
+console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and hinged panels`);
 
 const { prepareImported } = await import('../src/studio/vehicles/imported');
 for (const spec of [
@@ -283,7 +289,14 @@ for (const spec of [
   const size = new THREE.Box3().setFromObject(prepared.scene).getSize(new THREE.Vector3());
   assert.ok(Math.abs(size.z - spec.length) < 0.02, `${spec.id} length ${size.z}`);
   assert.ok(size.x < spec.maxWidth && size.y > spec.minHeight, `${spec.id} bounds ${size.x.toFixed(2)}x${size.y.toFixed(2)}`);
-  assert.ok(prepared.staticBody);
+  if (spec.id === 'juniper') {
+    assert.equal(prepared.staticBody, false);
+    for (const name of ['hood', 'tailgate', 'door_fl', 'door_fr']) {
+      assert.ok(prepared.scene.getObjectByName(name), `${spec.id} missing ${name}`);
+    }
+  } else {
+    assert.ok(prepared.staticBody);
+  }
   assert.ok(prepared.scene.getObjectByName('body'));
   if (spec.wheels) {
     for (const name of ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {

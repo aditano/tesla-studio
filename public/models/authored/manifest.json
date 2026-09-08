@@ -54,8 +54,8 @@
       ]
     },
     "cybertruck": {
-      "bytes": 2216564,
-      "triangles": 120928,
+      "bytes": 2194520,
+      "triangles": 119624,
       "meshes": 97,
       "length": 5.6829,
       "width": 2.0316,
@@ -79,14 +79,14 @@
       ]
     },
     "cybercab": {
-      "bytes": 2264052,
-      "triangles": 141792,
-      "meshes": 76,
+      "bytes": 1729380,
+      "triangles": 98720,
+      "meshes": 73,
       "length": 4.12,
-      "width": 1.8,
-      "height": 1.38,
+      "width": 1.86,
+      "height": 1.44,
       "wheelbase": 2.4,
-      "precision": "concept proportions estimated from photographs",
+      "precision": "concept proportions estimated from reveal imagery",
       "rig": [
         "body",
         "hood",

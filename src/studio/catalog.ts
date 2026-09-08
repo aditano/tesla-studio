@@ -228,7 +228,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Model 3",
     tag: "Highland",
     marketNote:
-      "North America 2026 presentation. Paint and wheel names match Tesla's US Design Studio; which trims offer them is illustrative. Licensed artist mesh with a static body — door, hood, liftgate and charge-port tours are camera studies, not hinged panels.",
+      "North America 2026 presentation. Paint and wheel names match Tesla's US Design Studio; which trims offer them is illustrative. Licensed artist mesh with presentation hinges for doors, hood and trunk.",
     variants: [
       {
         id: "rwd",
@@ -269,19 +269,16 @@ export const VEHICLES: VehicleDef[] = [
         id: "doors",
         label: "Doors",
         hint: "Frameless four-door cabin",
-        cameraOnly: true,
       },
       {
         id: "frunk",
         label: "Frunk",
         hint: "Front storage",
-        cameraOnly: true,
       },
       {
         id: "trunk",
         label: "Trunk",
         hint: "Rear cargo",
-        cameraOnly: true,
       },
       {
         id: "charge",
@@ -295,14 +292,14 @@ export const VEHICLES: VehicleDef[] = [
         hint: "Minimalist Highland interior",
       },
     ],
-    parts: [],
+    parts: ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk"],
   },
   {
     id: "model-y",
     name: "Model Y",
     tag: "Juniper",
     marketNote:
-      "Juniper mesh by BloxBloger on Sketchfab, CC BY-NC 4.0. Static body; panel tours are camera studies. North America 2026 presentation names; trim availability is illustrative.",
+      "Juniper mesh by BloxBloger on Sketchfab, CC BY-NC 4.0. Presentation hinges open the doors, hood and liftgate. North America 2026 presentation names; trim availability is illustrative.",
     variants: [
       {
         id: "rwd",
@@ -340,19 +337,16 @@ export const VEHICLES: VehicleDef[] = [
         id: "doors",
         label: "Doors",
         hint: "Four-door cabin",
-        cameraOnly: true,
       },
       {
         id: "frunk",
         label: "Frunk",
         hint: "Front trunk",
-        cameraOnly: true,
       },
       {
         id: "trunk",
         label: "Liftgate",
         hint: "Rear cargo",
-        cameraOnly: true,
       },
       {
         id: "charge",
@@ -362,7 +356,7 @@ export const VEHICLES: VehicleDef[] = [
       },
       { id: "interior", label: "Inside the cabin", hint: "Minimalist Juniper interior" },
     ],
-    parts: [],
+    parts: ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk"],
   },
   {
     id: "cybertruck",

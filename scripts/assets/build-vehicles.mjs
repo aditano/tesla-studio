@@ -77,15 +77,15 @@ const rotor = mat('brake_rotor', '#74797e', .88, .47),
   seal = mat('panel_seal', '#080b0e', 0, .92);
 const white = mat('headlight_led', '#e7f0ff', .1, .16, {
   emissive: new T.Color('#d5e6ff'),
-  emissiveIntensity: 2.5
+  emissiveIntensity: 4.8
 });
 const blade = mat('signature_led', '#e7f0ff', .1, .16, {
   emissive: new T.Color('#d5e6ff'),
-  emissiveIntensity: 2.5
+  emissiveIntensity: 5.2
 });
 const tail = mat('taillight_led', '#8c0714', .15, .22, {
   emissive: new T.Color('#ed1828'),
-  emissiveIntensity: 1.5
+  emissiveIntensity: 3.2
 });
 const lens = mat('lamp_lens', '#576978', .2, .08, {
   clearcoat: 1,
@@ -244,7 +244,7 @@ function wheel(root, id, x, z, r, truck = false, cab = false) {
     const g = new T.CylinderGeometry(rr * 1.01, rr * 1.01, .038, 72);
     g.rotateZ(Math.PI / 2);
     g.translate(face, 0, 0);
-    mesh(standard, 'aero_disc', g, paint);
+    mesh(standard, 'aero_disc', g, rimMat);
     const lip = new T.TorusGeometry(rr * .98, .007, 8, 64);
     lip.rotateY(Math.PI / 2);
     lip.translate(face + side * .01, 0, 0);
@@ -638,27 +638,9 @@ function cybertruck(root) {
       box(parent, 'door_card', [.05, .43, b - a - .12], [s * (w - .05), .93, (a + b) / 2], leather, .019);
       box(parent, 'door_armrest', [.08, .06, .57], [s * (w - .11), .88, (a + b) / 2], trim, .014);
     }
-    const arch = [[-.52, .38], [-.62, .62], [-.50, 1.02], [-.18, 1.22], [.18, 1.22], [.50, 1.02], [.62, .62], [.52, .38]];
-    for (const z of [front, rear]) {
-      tube(body, 'polygonal_fender', arch.map(([dz, y]) => [s * (w + .028), y, z + dz]), .018, trim, 24);
-      for (let i = 0; i < arch.length - 1; i++) {
-        const a = arch[i], b = arch[i + 1];
-        quad(body, 'flare_lip', [
-          [s * (w + .006), a[1], z + a[0]],
-          [s * (w + .055), a[1] + .012, z + a[0] * 1.05],
-          [s * (w + .055), b[1] + .012, z + b[0] * 1.05],
-          [s * (w + .006), b[1], z + b[0]]
-        ], trim);
-        quad(body, 'flare_well', [
-          [s * (w - .04), a[1] * .92 + .08, z + a[0] * .82],
-          [s * (w + .006), a[1], z + a[0]],
-          [s * (w + .006), b[1], z + b[0]],
-          [s * (w - .04), b[1] * .92 + .08, z + b[0] * .82]
-        ], seal);
-      }
-    }
     quad(body, 'bed_sail', [[s * w, 1.22, 1.11], [s * (.78 + .08 * 1.11), roofY(1.11), 1.11], [s * w, 1.25, half], [s * w, 1.22, half]], steel);
-    tube(body, 'roof_fold', [[s * w, 1.22, -1.2], [s * .78, 1.794, -.12], [s * w, 1.25, half]], .008, steel, 2);
+    quad(body, 'a_pillar_fold', [[s * w, 1.22, -1.2], [s * .78, 1.794, -.12], [s * .80, 1.76, -.08], [s * w, 1.20, -1.14]], steel);
+    quad(body, 'roof_to_bed_fold', [[s * .78, 1.794, -.12], [s * w, 1.25, half], [s * (w - .02), 1.22, half], [s * .80, 1.76, -.08]], steel);
     box(body, 'running_board', [.055, .055, 2.05], [s * (w + .018), .40, -.11], trim, .008);
     box(body, 'side_cladding', [.05, .20, 2.08], [s * (w + .014), .50, -.11], trim, .008);
     const mirror = df;
@@ -728,6 +710,90 @@ function cybertruck(root) {
     precision: 'principal dimensions referenced to Tesla owner manual; medium ride height'
   };
 }
+function cybercab(root) {
+  const length = 4.12,
+    half = length / 2,
+    w = 0.93,
+    r = 0.33,
+    frontAxle = -1.2,
+    rearAxle = 1.2;
+  const body = group(root, 'body');
+  const hood = pivot(body, 'hood', [0, 0.78, -0.88]);
+  const hatch = pivot(body, 'tailgate', [0, 0.58, 1.18]);
+  const doors = {};
+  for (const s of [-1, 1])
+    doors[s] = pivot(body, s < 0 ? 'door_fl' : 'door_fr', [s * 0.36, 1.2, -0.06]);
+  const stations = [
+    [-half, 0.36, 0.42, 0.44],
+    [-half + 0.22, 0.68, 0.66, 0.7],
+    [-1.38, 0.91, 0.82, 0.9],
+    [-0.62, 0.93, 0.92, 1.2],
+    [0.12, 0.93, 0.95, 1.4],
+    [0.88, 0.9, 0.9, 1.18],
+    [1.52, 0.7, 0.68, 0.8],
+    [half, 0.3, 0.38, 0.4]
+  ];
+  const width = z => spline(stations, z, 1),
+    belt = z => spline(stations, z, 2),
+    crown = z => spline(stations, z, 3);
+  const lower = z => {
+    let v = 0.16 + 0.14 * (Math.abs(z) / half) ** 10;
+    for (const axle of [frontAxle, rearAxle]) {
+      const d = z - axle,
+        rr = r + 0.04;
+      if (Math.abs(d) < rr) v = Math.max(v, r + Math.sqrt(rr * rr - d * d));
+    }
+    return v;
+  };
+  const side = (s, z, t) => V(s * width(z) * (0.96 + 0.04 * Math.sin(t * Math.PI / 2)), lerp(lower(z), belt(z), t), z);
+  const canopy = (s, z, t) => V(s * lerp(0.42, width(z) - 0.02, 1 - t), lerp(belt(z) + 0.02, crown(z), t), z);
+  for (const s of [-1, 1]) {
+    patch(body, 'cab_nose_side', (u, v) => side(s, lerp(-half + 0.01, -0.92, u), v), 22, 10, paint, 0.008);
+    patch(doors[s], 'cab_door_side', (u, v) => side(s, lerp(-0.92, 1.02, u), v), 36, 10, paint, 0.008);
+    patch(body, 'cab_tail_side', (u, v) => side(s, lerp(1.02, half - 0.01, u), v), 20, 10, paint, 0.008);
+    patch(doors[s], 'cab_canopy', (u, v) => canopy(s, lerp(-0.88, 0.98, u), v), 28, 10, glass, 0.002);
+    box(doors[s], 'door_card', [0.045, 0.38, 1.35], [s * (w - 0.08), 0.62, 0.05], leather, 0.02);
+    box(doors[s], 'door_armrest', [0.07, 0.045, 0.7], [s * (w - 0.12), 0.66, 0.02], trim, 0.014);
+  }
+  patch(hood, 'cab_hood', (u, v) => {
+    const z = lerp(-half + 0.2, -0.9, v),
+      x = (u - 0.5) * 2 * width(z);
+    return V(x, crown(z) + 0.03 * Math.sin(v * Math.PI) * (1 - (2 * u - 1) ** 2), z);
+  }, 28, 22, paint, 0.008);
+  patch(body, 'cab_front_glass', (u, v) => {
+    const z = lerp(-0.88, -0.08, v);
+    return V((u - 0.5) * 2 * lerp(width(z) - 0.04, 0.46, v), lerp(belt(z) + 0.04, crown(z), v), z);
+  }, 20, 14, glass);
+  patch(body, 'cab_roof', (u, v) => {
+    const z = lerp(-0.08, 0.72, v);
+    return V((u - 0.5) * 2 * lerp(0.46, 0.5, v), crown(z) + 0.01, z);
+  }, 16, 10, glass);
+  patch(hatch, 'cab_tail', (u, v) => {
+    const z = lerp(1.05, half - 0.04, v),
+      x = (u - 0.5) * 2 * width(z);
+    return V(x, lerp(belt(z), crown(z), 0.35 + 0.4 * (1 - v)), z);
+  }, 20, 16, paint, 0.008);
+  box(body, 'front_valence', [1.52, 0.12, 0.1], [0, 0.28, -half + 0.06], trim, 0.02);
+  box(body, 'rear_valence', [1.28, 0.1, 0.1], [0, 0.26, half - 0.05], trim, 0.02);
+  tube(body, 'cab_lightbar', [[-0.86, 0.72, -half - 0.012], [0, 0.76, -half - 0.02], [0.86, 0.72, -half - 0.012]], 0.012, blade, 48);
+  for (const s of [-1, 1]) {
+    box(body, 'cab_projector', [0.16, 0.04, 0.02], [s * 0.58, 0.64, -half - 0.008], white, 0.008);
+    tube(body, 'cab_tail_lamp', [[s * 0.12, 0.7, half + 0.008], [s * 0.62, 0.66, half + 0.004]], 0.01, tail, 16);
+  }
+  cabin(body, { cab: true, lift: 0.02, width: w * 2 });
+  for (const s of [-1, 1]) {
+    wheel(root, s < 0 ? 'wheel_fl' : 'wheel_fr', s * 0.8, frontAxle, r, false, true);
+    wheel(root, s < 0 ? 'wheel_rl' : 'wheel_rr', s * 0.8, rearAxle, r, false, true);
+  }
+  for (const p of [hood, hatch, ...Object.values(doors)]) toLocal(p);
+  root.userData.dimensions = {
+    length,
+    width: w * 2,
+    height: 1.44,
+    wheelbase: rearAxle - frontAxle,
+    precision: 'concept proportions estimated from reveal imagery'
+  };
+}
 function optimize(root) {
   // Keep articulated groups and wheel styles; merge their static children by material.
   for (const child of [...root.children]) if (child instanceof T.Group) optimize(child);
@@ -791,7 +857,9 @@ for (const id of ['model-3', 'model-y', 'cybertruck', 'cybercab']) {
   const root = new T.Group();
   root.name = id;
   root.userData.assetVersion = 1;
-  if (id === 'cybertruck') cybertruck(root);else passenger(root, id);
+  if (id === 'cybertruck') cybertruck(root);
+  else if (id === 'cybercab') cybercab(root);
+  else passenger(root, id);
   optimize(root);
   let triangles = 0,
     meshes = 0;

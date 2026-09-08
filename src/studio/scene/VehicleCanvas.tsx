@@ -108,10 +108,10 @@ function atmosphere(mode: string) {
   return {
     day,
     night,
-    bg: day ? "#8e969e" : night ? "#06080c" : "#15191f",
-    floor: day ? "#8e969e" : night ? "#06080c" : "#15191f",
-    fogNear: day ? 16 : night ? 10 : 12,
-    fogFar: day ? 52 : night ? 38 : 44,
+    bg: day ? "#7d858d" : night ? "#05070a" : "#10141a",
+    floor: day ? "#6a7178" : night ? "#1b2026" : "#2c333b",
+    fogNear: day ? 22 : night ? 16 : 18,
+    fogFar: day ? 70 : night ? 52 : 58,
   };
 }
 
@@ -249,8 +249,8 @@ function Floor({ high }: { high: boolean }) {
     const ctx = canvas.getContext("2d")!;
     const grad = ctx.createRadialGradient(256, 256, 40, 256, 256, 256);
     grad.addColorStop(0, "rgba(0,0,0,0)");
-    grad.addColorStop(0.4, "rgba(0,0,0,0.45)");
-    grad.addColorStop(0.72, "rgba(0,0,0,0.88)");
+    grad.addColorStop(0.58, "rgba(0,0,0,0.18)");
+    grad.addColorStop(0.84, "rgba(0,0,0,0.7)");
     grad.addColorStop(1, "rgba(0,0,0,1)");
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 512);
@@ -258,6 +258,45 @@ function Floor({ high }: { high: boolean }) {
     texture.colorSpace = THREE.NoColorSpace;
     return texture;
   }, []);
+  const floorMap = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1024;
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#2f353c";
+    ctx.fillRect(0, 0, 1024, 1024);
+    for (let i = 0; i < 14000; i++) {
+      const n = 18 + Math.random() * 22;
+      ctx.fillStyle = `rgba(${n},${n + 2},${n + 4},${0.08 + Math.random() * 0.12})`;
+      ctx.fillRect(Math.random() * 1024, Math.random() * 1024, 2, 2);
+    }
+    ctx.strokeStyle = "rgba(210,218,226,0.16)";
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 1024; i += 64) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 1024);
+      ctx.moveTo(0, i);
+      ctx.lineTo(1024, i);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(230,236,242,0.28)";
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i <= 1024; i += 256) {
+      ctx.beginPath();
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, 1024);
+      ctx.moveTo(0, i);
+      ctx.lineTo(1024, i);
+      ctx.stroke();
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(6, 6);
+    texture.colorSpace = THREE.NoColorSpace;
+    texture.anisotropy = 8;
+    return texture;
+  }, []);
+  useEffect(() => () => floorMap.dispose(), [floorMap]);
   useEffect(() => () => fadeMap.dispose(), [fadeMap]);
   return (
     <>
@@ -273,17 +312,33 @@ function Floor({ high }: { high: boolean }) {
         <circleGeometry args={[32, 64]} />
         <MeshReflectorMaterial
           resolution={high ? 1024 : 512}
-          blur={[360, 130]}
-          mixBlur={0.96}
-          mixStrength={night ? 1.35 : day ? 2.2 : 1.85}
-          mixContrast={0.82}
-          roughness={night ? 0.94 : day ? 0.88 : 0.91}
-          metalness={night ? 0.06 : day ? 0.08 : 0.1}
+          blur={[280, 90]}
+          mixBlur={0.82}
+          mixStrength={night ? 0.55 : day ? 1.7 : 1.45}
+          mixContrast={0.9}
+          roughness={night ? 0.86 : day ? 0.78 : 0.82}
+          metalness={night ? 0.08 : day ? 0.1 : 0.12}
           color={floor}
-          mirror={night ? 0.02 : day ? 0.05 : 0.04}
-          depthScale={0.32}
-          minDepthThreshold={0.4}
-          maxDepthThreshold={1.4}
+          mirror={night ? 0.03 : day ? 0.06 : 0.05}
+          depthScale={0.38}
+          minDepthThreshold={0.35}
+          maxDepthThreshold={1.5}
+        />
+      </mesh>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.012, 0]}
+        receiveShadow
+      >
+        <circleGeometry args={[28, 64]} />
+        <meshStandardMaterial
+          map={floorMap}
+          color="#d8dee6"
+          roughness={0.92}
+          metalness={0.04}
+          transparent
+          opacity={night ? 0.42 : day ? 0.7 : 0.62}
+          depthWrite={false}
         />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.011, 0]}>
@@ -344,9 +399,9 @@ function PostFX({ high }: { high: boolean }) {
         halfRes
       />
       <Bloom
-        luminanceThreshold={3.4}
-        luminanceSmoothing={0.28}
-        intensity={0.05}
+        luminanceThreshold={night ? 0.55 : 0.78}
+        luminanceSmoothing={0.22}
+        intensity={night ? 0.62 : day ? 0.28 : 0.42}
         mipmapBlur
       />
       <Vignette

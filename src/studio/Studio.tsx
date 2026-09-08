@@ -562,9 +562,9 @@ export function Studio() {
           {heritage
             ? "Artist-built mesh · Original-generation design"
             : s.modelId === "model-3"
-              ? "Artist-built mesh · Highland · static body"
+              ? "Artist-built mesh · Highland · hinged panels"
               : s.modelId === "model-y"
-                ? "Sketchfab mesh · Juniper · static body"
+                ? "Sketchfab mesh · Juniper · hinged panels"
                 : s.modelId === "cybertruck"
                   ? "Original authored 3D study · articulated panels"
               : s.modelId === "cybercab"
@@ -617,14 +617,13 @@ export function Studio() {
                   demonstration. Press Escape to return to the exterior.
                 </p>
                 <p>
-                  Highland uses a licensed artist mesh with a static body: door,
-                  hood and liftgate tours are camera studies, not hinged panels.
-                  Juniper uses BloxBloger’s 2025 Model Y (CC BY-NC) and is also
-                  static. Cybertruck is an original authored study with
+                  Highland and Juniper use licensed artist meshes with
+                  presentation hinges so doors, hoods and trunks open on click.
+                  Cybertruck is an original authored stainless study with
                   articulated panels and suspension — illustrative, not factory
-                  CAD. Cybercab is an original authored concept study, not a
-                  production specification. Paint and wheel names follow the
-                  North America 2026 Design Studio; trim availability is
+                  CAD. Cybercab is an original authored two-seat concept study,
+                  not a production specification. Paint and wheel names follow
+                  the North America 2026 Design Studio; trim availability is
                   illustrative.
                 </p>
                 <p>
@@ -676,8 +675,8 @@ export function Studio() {
                   >
                     CC BY 4.0
                   </a>
-                  . Adapted with compression, material controls and an intact
-                  static body.{" "}
+                  . Adapted with compression, material controls and
+                  presentation hinges.{" "}
                   <a
                     href={`${import.meta.env.BASE_URL}models/highland/CREDITS.md`}
                   >

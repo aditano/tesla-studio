@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { paintParams } from "../materials";
 import type { Interior, Paint, Variant } from "../catalog";
 import { useStudio } from "../store";
+import { LampBeams } from "./LampBeams";
 
 type Panel = "fixed" | "left" | "right" | "hood" | "hatch";
 export const pivots: Record<Panel, [number, number, number]> = {
@@ -72,7 +73,7 @@ export function prepareHeritage(source: THREE.Group, model: string) {
       const z = ids.reduce((v, j) => v + position.getZ(j), 0) / 3;
       let panel: Panel = "fixed";
       if (movable) {
-        if (Math.abs(x) > 0.67 && z > -0.85 && z < 0.83 && y > 0.37 && y < 1.3)
+        if (Math.abs(x) > 0.62 && z > -0.95 && z < 0.92 && y > 0.34 && y < 1.48)
           panel = x < 0 ? "left" : "right";
         else if (Math.abs(x) < 0.76 && z < -0.97 && z > -2.13 && y > 0.76)
           panel = "hood";
@@ -157,7 +158,7 @@ export function HeritageVehicle({
       }
       if (name === "LED_PHARE" || name === "emit") {
         mat.emissive.set("#e5f0ff");
-        mat.emissiveIntensity = lights ? 1.3 : 0;
+        mat.emissiveIntensity = lights ? 4.6 : 0;
       }
       mat.needsUpdate = true;
     });
@@ -204,17 +205,15 @@ export function HeritageVehicle({
               ? undefined
               : (e) => {
                   e.stopPropagation();
-                  useStudio
-                    .getState()
-                    .togglePart(
-                      id === "left"
-                        ? "door-fl"
-                        : id === "right"
-                          ? "door-fr"
-                          : id === "hood"
-                            ? "frunk"
-                            : "trunk",
-                    );
+                  const part =
+                    id === "left"
+                      ? "door-fl"
+                      : id === "right"
+                        ? "door-fr"
+                        : id === "hood"
+                          ? "frunk"
+                          : "trunk";
+                  useStudio.getState().togglePart(part);
                 }
           }
         >
@@ -240,6 +239,7 @@ export function HeritageVehicle({
           />
         </mesh>
       )}
+      <LampBeams model={model} on={lights} />
     </group>
   );
 }

@@ -7,6 +7,8 @@ import { paintParams } from "../materials";
 import { useStudio } from "../store";
 import { prepareHighland } from "./highland";
 import { prepareImported } from "./imported";
+import { LampBeams } from "./LampBeams";
+import { panelActivity, updatePaintHoles } from "./panelRig";
 
 const partNames: Record<string, PartId> = {
   door_fl: "door-fl",
@@ -127,19 +129,19 @@ export function AuthoredVehicle({
         m.color.set(variant.spoiler ? "#333941" : "#555e67");
       if (m.name === "headlight_led") {
         m.emissive.set("#edf5ff");
-        m.emissiveIntensity = lights ? 1.25 : 0;
+        m.emissiveIntensity = lights ? 4.8 : 0;
         m.metalness = 0.12;
         m.roughness = 0.22;
       }
       if (m.name === "signature_led") {
         m.emissive.set("#e8f1ff");
-        m.emissiveIntensity = lightBar ? 1.4 : 0;
+        m.emissiveIntensity = lightBar ? 5.2 : 0;
         m.metalness = 0.12;
         m.roughness = 0.2;
       }
       if (m.name === "taillight_led") {
         m.emissive.set("#ed1828");
-        m.emissiveIntensity = lights ? 1.05 : 0.1;
+        m.emissiveIntensity = lights ? 3.2 : 0.18;
         m.metalness = 0.16;
         m.roughness = 0.26;
       }
@@ -156,7 +158,7 @@ export function AuthoredVehicle({
         m.envMapIntensity = 1.35;
         if (m.name === "lamp_lens") {
           m.emissive.set("#9eb4c6");
-          m.emissiveIntensity = lights ? 0.06 : 0;
+          m.emissiveIntensity = lights ? 0.45 : 0;
         }
       }
       m.needsUpdate = true;
@@ -197,6 +199,13 @@ export function AuthoredVehicle({
     const damp = (a: number, b: number) =>
       reduced ? b : THREE.MathUtils.damp(a, b, 5, dt);
     if (!staticBody) {
+      const holes = panelActivity(open, feature);
+      if (highland || imported)
+        updatePaintHoles(
+          instance.materials,
+          holes,
+          highland ? "highland" : "juniper",
+        );
       for (const name of ["door_fl", "door_fr", "door_rl", "door_rr"]) {
         const door = rig[name];
         if (!door) continue;
@@ -214,21 +223,46 @@ export function AuthoredVehicle({
             door.rotation.z,
             active ? side * 1.12 : 0,
           );
+        door.traverse((child) => {
+          if (!(child instanceof THREE.Mesh)) return;
+          if (child.userData.hitVolume) {
+            child.visible = true;
+            return;
+          }
+          if (child.userData.presentationDetail) child.visible = active;
+          const mats = Array.isArray(child.material)
+            ? child.material
+            : [child.material];
+          if (!mats.some((m) => /glass|window/i.test(m.name))) return;
+          if (child.userData.presentationDetail) return;
+          child.position.y = damp(child.position.y, active ? -0.2 : 0);
+        });
       }
-      if (rig.hood)
-        rig.hood.rotation.x = damp(
-          rig.hood.rotation.x,
-          open.frunk || feature === "frunk" ? 0.82 : 0,
-        );
-      if (rig.tailgate)
+      if (rig.hood) {
+        const active = open.frunk || feature === "frunk";
+        rig.hood.rotation.x = damp(rig.hood.rotation.x, active ? 0.82 : 0);
+        rig.hood.traverse((child) => {
+          if (!(child instanceof THREE.Mesh)) return;
+          if (child.userData.hitVolume) child.visible = true;
+          else if (child.userData.presentationDetail) child.visible = active;
+        });
+      }
+      if (rig.tailgate) {
+        const active = open.trunk || feature === "trunk";
         rig.tailgate.rotation.x = damp(
           rig.tailgate.rotation.x,
-          open.trunk || feature === "trunk"
+          active
             ? model === "cybertruck"
               ? Math.PI / 2
               : -1.05
             : 0,
         );
+        rig.tailgate.traverse((child) => {
+          if (!(child instanceof THREE.Mesh)) return;
+          if (child.userData.hitVolume) child.visible = true;
+          else if (child.userData.presentationDetail) child.visible = active;
+        });
+      }
       if (rig.charge_port)
         rig.charge_port.rotation.y = damp(
           rig.charge_port.rotation.y,
@@ -258,7 +292,7 @@ export function AuthoredVehicle({
       instance.materials.forEach((m) => {
         if (m.name === "signature_led")
           m.emissiveIntensity = lightBar
-            ? 1.4 + Math.sin(elapsed.current * 3) * 0.28
+            ? 5.2 + Math.sin(elapsed.current * 3) * 0.55
             : 0;
       });
   });
@@ -272,14 +306,15 @@ export function AuthoredVehicle({
       const part = partNames[object.name];
       if (part) {
         event.stopPropagation();
-        const s = useStudio.getState();
-        if (s.feature) s.setFeature(null);
-        else s.togglePart(part);
-        return;
+        useStudio.getState().togglePart(part);
+        break;
       }
     }
   };
   return (
-    <primitive object={instance.scene} dispose={null} onClick={click} />
+    <group>
+      <primitive object={instance.scene} dispose={null} onClick={click} />
+      <LampBeams model={model} on={lights} />
+    </group>
   );
 }
