@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "author": "Tesla Studio original assets",
+  "units": "metres",
+  "forward": "-Z",
+  "up": "+Y",
+  "vehicles": {
+    "model-3": {
+      "bytes": 2609408,
+      "triangles": 161752,
+      "meshes": 91,
+      "length": 4.72,
+      "width": 1.85,
+      "height": 1.44,
+      "wheelbase": 2.875,
+      "precision": "principal dimensions referenced to Tesla owner manuals",
+      "rig": [
+        "body",
+        "hood",
+        "tailgate",
+        "door_fl",
+        "door_fr",
+        "wheel_fl",
+        "wheel_fr",
+        "wheel_rl",
+        "wheel_rr",
+        "door_rl",
+        "door_rr",
+        "charge_port"
+      ]
+    },
+    "model-y": {
+      "bytes": 2552528,
+      "triangles": 158976,
+      "meshes": 91,
+      "length": 4.794,
+      "width": 1.98,
+      "height": 1.624,
+      "wheelbase": 2.8899999999999997,
+      "precision": "principal dimensions referenced to Tesla owner manuals",
+      "rig": [
+        "body",
+        "hood",
+        "tailgate",
+        "door_fl",
+        "door_fr",
+        "wheel_fl",
+        "wheel_fr",
+        "wheel_rl",
+        "wheel_rr",
+        "door_rl",
+        "door_rr",
+        "charge_port"
+      ]
+    },
+    "cybertruck": {
+      "bytes": 2194520,
+      "triangles": 119624,
+      "meshes": 97,
+      "length": 5.6829,
+      "width": 2.0316,
+      "height": 1.794,
+      "wheelbase": 3.635,
+      "precision": "principal dimensions referenced to Tesla owner manual; medium ride height",
+      "rig": [
+        "body",
+        "hood",
+        "tailgate",
+        "door_fl",
+        "door_fr",
+        "wheel_fl",
+        "wheel_fr",
+        "wheel_rl",
+        "wheel_rr",
+        "door_rl",
+        "door_rr",
+        "charge_port",
+        "tonneau"
+      ]
+    },
+    "cybercab": {
+      "bytes": 1729380,
+      "triangles": 98720,
+      "meshes": 73,
+      "length": 4.12,
+      "width": 1.86,
+      "height": 1.44,
+      "wheelbase": 2.4,
+      "precision": "concept proportions estimated from reveal imagery",
+      "rig": [
+        "body",
+        "hood",
+        "tailgate",
+        "door_fl",
+        "door_fr",
+        "wheel_fl",
+        "wheel_fr",
+        "wheel_rl",
+        "wheel_rr"
+      ]
+    }
+  }
+}
