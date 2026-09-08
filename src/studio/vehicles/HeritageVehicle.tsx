@@ -157,7 +157,7 @@ export function HeritageVehicle({
       }
       if (name === "LED_PHARE" || name === "emit") {
         mat.emissive.set("#e5f0ff");
-        mat.emissiveIntensity = lights ? 3 : 0;
+        mat.emissiveIntensity = lights ? 1.3 : 0;
       }
       mat.needsUpdate = true;
     });

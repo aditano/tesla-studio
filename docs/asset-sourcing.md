@@ -59,3 +59,23 @@ Helper once a token exists:
 SKETCHFAB_TOKEN=... node scripts/assets/fetch-sketchfab.mjs 587a0833e60f465090145b139f6c1bfc /tmp/sketcher-cybertruck.glb
 SKETCHFAB_TOKEN=... node scripts/assets/fetch-sketchfab.mjs 45c25fd8442b45129e47be2e66449ca3 /tmp/zwir3kk-cybercab.glb
 ```
+
+## 2026-09-07 evening login-free search
+
+Re-checked env, shell rc, and `.env*` — no `SKETCHFAB_TOKEN`. Official download for Sketcher (`587a0833…`) still **401**. Metadata without a token still works.
+
+| Candidate | License | Faces | Fetch | Verdict |
+| --- | --- | --- | --- | --- |
+| [Sketcher / jnanbr07](https://sketchfab.com/3d-models/tesla-cybertruck-587a0833e60f465090145b139f6c1bfc) | CC BY 4.0 | 380,876 | Download **401** | Still the best production match. |
+| [TAIGA-ZOE](https://sketchfab.com/3d-models/tesla-cybertruck-8950fc178e254c9198b2a8555ef1590a) | CC BY 4.0 | 380,936 | Same 401 | Near-identical production mesh; same login wall. |
+| [adamsochi2010 / Mr3DDD](https://sketchfab.com/3d-models/tesla-cybertruck-e95c44b87b57467098c82ba9f316f36d) | CC BY 4.0 | 274,062 | Same 401 | Second-best production-lean CC BY. |
+| [zwir3kk Cybercab](https://sketchfab.com/3d-models/tesla-cybercab-3d-model-45c25fd8442b45129e47be2e66449ca3) | CC BY 4.0 | 99,230 | Same 401 | Still the best gold-reveal match. |
+| [BloxBloger Juniper](https://sketchfab.com/3d-models/2025-tesla-model-y-619601e7800d418da5922c4fa7833f74) | CC BY-NC 4.0 | 307,399 | Already in-repo; no public OBJ+MTL/texture mirror | Keep procedural materials. |
+| [MaikoCode/apex-drift-oss](https://github.com/MaikoCode/apex-drift-oss) `cybertruck.glb` | Repo MIT; mesh uncredited | 17,409 | GitHub raw 1.7 MB | Single merged game mesh, no author/license for the body. Not imported. |
+| Other GitHub `cybertruck.glb` hits (sceneview, pico_traffic, wrap-factory, Tesla landing pages) | Unspecified or 2019 concept | 8k–28k or unknown | Partial raw 404s | Excluded: concept, unspecified Tesla rights, or not downloadable. |
+| Wikimedia Commons `filetype:3d` Tesla Cybertruck / Cybercab | — | — | API `totalhits: 0` | No 3D files. |
+| Smithsonian 3d.si.edu | — | — | Search gated (HTTP 403) | No public Tesla mesh found. |
+| Poly Pizza Mobolaji | CC BY | 19,268 | Already reviewed | Stylized blockout. Not used. |
+| Commercial / scraper hosts (CGTrader, 88cars3d, freecreat, CGHub) | Royalty-free or unspecified | — | Account or paid | Raw-mesh republish in this public repo is not allowed. |
+
+Viewer still uses the articulated authored Cybertruck and Cybercab studies. The in-repo Nieve5677 import remains archived for comparison; it is static, crude, and width-squeezed. A same-session browser load of that import as the runtime truck did not produce a usable studio frame, so it does not replace the authored study. Do not treat either authored vehicle as a finished production mesh.

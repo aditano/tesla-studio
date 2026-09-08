@@ -130,7 +130,7 @@ function treatImported(material: THREE.MeshPhysicalMaterial, role: string) {
     material.metalness = 0.12;
     material.roughness = 0.2;
     material.emissive.set("#edf5ff");
-    material.emissiveIntensity = 2.4;
+    material.emissiveIntensity = 1.25;
     material.color.set("#e8f1ff");
   }
   if (role === "taillight_led") {
@@ -139,7 +139,7 @@ function treatImported(material: THREE.MeshPhysicalMaterial, role: string) {
     material.metalness = 0.16;
     material.roughness = 0.24;
     material.emissive.set("#ed1828");
-    material.emissiveIntensity = 1.45;
+    material.emissiveIntensity = 1.05;
   }
 }
 

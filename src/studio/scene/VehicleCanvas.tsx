@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import {
   ContactShadows,
@@ -102,124 +102,139 @@ function CinematicControls() {
   );
 }
 
+function atmosphere(mode: string) {
+  const day = mode === "daylight",
+    night = mode === "midnight";
+  return {
+    day,
+    night,
+    bg: day ? "#8e969e" : night ? "#06080c" : "#15191f",
+    floor: day ? "#8e969e" : night ? "#06080c" : "#15191f",
+    fogNear: day ? 16 : night ? 10 : 12,
+    fogFar: day ? 52 : night ? 38 : 44,
+  };
+}
+
 function ToneMap() {
   const mode = useStudio((s) => s.environment);
   const gl = useThree((s) => s.gl);
   const exposure =
-    mode === "daylight" ? 0.96 : mode === "midnight" ? 0.88 : 1.03;
+    mode === "daylight" ? 0.94 : mode === "midnight" ? 0.8 : 0.97;
   useEffect(() => {
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = exposure;
+    gl.shadowMap.enabled = true;
+    gl.shadowMap.type = THREE.PCFSoftShadowMap;
   }, [gl, exposure]);
   return null;
 }
 
 function Lighting({ high }: { high: boolean }) {
   const mode = useStudio((s) => s.environment);
-  const day = mode === "daylight",
-    night = mode === "midnight";
-  const bg = day ? "#9aa3ab" : night ? "#050810" : "#1a1f26";
+  const { day, night, bg, fogNear, fogFar } = atmosphere(mode);
   return (
     <>
       <color attach="background" args={[bg]} />
-      <fog attach="fog" args={[bg, day ? 20 : 15, day ? 56 : 44]} />
+      <fog attach="fog" args={[bg, fogNear, fogFar]} />
       <hemisphereLight
-        intensity={day ? 0.82 : night ? 0.2 : 0.36}
-        color={day ? "#eef3f8" : night ? "#8ea2be" : "#dce6f0"}
-        groundColor={day ? "#61666d" : night ? "#080a0e" : "#26292e"}
+        intensity={day ? 0.58 : night ? 0.18 : 0.3}
+        color={day ? "#f3f6fa" : night ? "#9aadc4" : "#e6eef6"}
+        groundColor={day ? "#6a7076" : night ? "#0a0c10" : "#2a2e33"}
       />
       <directionalLight
-        position={[-3.2, 8, -4.2]}
-        intensity={day ? 1.75 : night ? 0.42 : 1.2}
-        color={day ? "#fff1d6" : night ? "#b7c6de" : "#f3f6ff"}
+        position={[-4.4, 10.2, -3.8]}
+        intensity={day ? 1.05 : night ? 0.26 : 0.62}
+        color={day ? "#fff4e4" : night ? "#c5d2e6" : "#f5f7fb"}
         castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.00022}
-        shadow-normalBias={0.022}
+        shadow-mapSize={[high ? 2048 : 1024, high ? 2048 : 1024]}
+        shadow-bias={-0.00018}
+        shadow-normalBias={0.03}
+        shadow-radius={3}
         shadow-camera-near={1}
-        shadow-camera-far={24}
-        shadow-camera-left={-6.5}
-        shadow-camera-right={6.5}
-        shadow-camera-top={6.5}
-        shadow-camera-bottom={-6.5}
+        shadow-camera-far={30}
+        shadow-camera-left={-8.5}
+        shadow-camera-right={8.5}
+        shadow-camera-top={8.5}
+        shadow-camera-bottom={-8.5}
       />
       <directionalLight
-        position={[4.4, 3.2, 3.2]}
-        intensity={day ? 0.48 : night ? 0.18 : 0.32}
-        color={night ? "#7f9ac4" : "#fff4ea"}
+        position={[5.6, 5.2, 2.8]}
+        intensity={day ? 0.28 : night ? 0.1 : 0.18}
+        color={night ? "#8aa0c4" : "#fff6ec"}
       />
-      {!day && (
-        <directionalLight
-          position={[1.2, 2.4, -5.5]}
-          intensity={night ? 0.12 : 0.16}
-          color={night ? "#d4a898" : "#ffe8d2"}
-        />
-      )}
-      <Environment resolution={high ? 512 : 256} frames={1} key={mode}>
+      <Environment resolution={high ? 1024 : 256} frames={1} key={mode}>
         <Lightformer
           form="rect"
-          intensity={day ? 3.2 : night ? 1.6 : 3.8}
-          position={[0, 7.2, 0]}
+          intensity={day ? 2.4 : night ? 1.15 : 2.6}
+          position={[0, 9.2, 0]}
           rotation={[Math.PI / 2, 0, 0]}
-          scale={day ? [18, 12, 1] : [14, 6, 1]}
+          scale={day ? [28, 20, 1] : [22, 16, 1]}
           color="#ffffff"
         />
         <Lightformer
           form="rect"
-          intensity={day ? 1.4 : night ? 3.4 : 7.2}
-          position={[0, 7, -0.8]}
+          intensity={day ? 1.2 : night ? 1.8 : 2.7}
+          position={[0, 8.6, -0.4]}
           rotation={[Math.PI / 2, 0, 0]}
-          scale={[18, day ? 1.6 : 0.28, 1]}
+          scale={[20, day ? 2.4 : 0.7, 1]}
           color="#ffffff"
         />
         <Lightformer
           form="rect"
-          intensity={day ? 1.5 : night ? 2.6 : 5.4}
-          position={[-6.4, 2.1, 0.2]}
+          intensity={day ? 0.7 : night ? 1.1 : 1.5}
+          position={[0, 8.5, 1.6]}
+          rotation={[Math.PI / 2, 0, 0]}
+          scale={[16, day ? 1.6 : 0.45, 1]}
+          color="#f4f7fb"
+        />
+        <Lightformer
+          form="rect"
+          intensity={day ? 1.05 : night ? 1.4 : 1.8}
+          position={[-8.2, 3.4, 0]}
           rotation={[0, Math.PI / 2, 0]}
-          scale={[12, day ? 2.4 : 0.42, 1]}
-          color={night ? "#6d8fbf" : "#e7eeff"}
+          scale={[16, day ? 6 : 4.2, 1]}
+          color={night ? "#8aa3c2" : "#eef3ff"}
         />
         <Lightformer
           form="rect"
-          intensity={day ? 1.4 : night ? 2.2 : 4.8}
-          position={[6.4, 1.8, 0.6]}
+          intensity={day ? 0.95 : night ? 1.15 : 1.55}
+          position={[8.2, 3.1, 0.4]}
           rotation={[0, -Math.PI / 2, 0]}
-          scale={[11, day ? 2 : 0.36, 1]}
-          color={night ? "#c9847a" : "#fff3e6"}
+          scale={[15, day ? 5.4 : 3.6, 1]}
+          color={night ? "#c4b0a4" : "#fff6ec"}
         />
         <Lightformer
           form="rect"
-          intensity={day ? 2 : night ? 1.1 : 2.2}
-          position={[0, 3.4, 8.2]}
+          intensity={day ? 1.55 : night ? 0.85 : 1.7}
+          position={[0, 3.6, 10.5]}
           rotation={[0, Math.PI, 0]}
-          scale={[8, 2.6, 1]}
+          scale={[14, 5, 1]}
           color="#ffffff"
         />
         <Lightformer
           form="rect"
-          intensity={day ? 1.5 : night ? 1.4 : 2}
-          position={[0, 2.6, -8.5]}
-          scale={[7, 3, 1]}
+          intensity={day ? 1.25 : night ? 1.05 : 1.45}
+          position={[0, 3.2, -10.8]}
+          scale={[12, 4.6, 1]}
           color="#ffffff"
         />
         {!day && (
           <Lightformer
             form="ring"
-            intensity={night ? 1.4 : 2.4}
-            position={[0, 5.6, -1.2]}
+            intensity={night ? 0.85 : 1.2}
+            position={[0, 6.4, -0.6]}
             rotation={[Math.PI / 2, 0, 0]}
-            scale={7}
+            scale={8}
             color="#ffffff"
           />
         )}
         <Lightformer
           form="rect"
-          intensity={day ? 0.7 : night ? 0.18 : 0.35}
-          position={[0, -0.35, 0]}
+          intensity={day ? 0.55 : night ? 0.14 : 0.28}
+          position={[0, -0.4, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
-          scale={[10, 10, 1]}
-          color={day ? "#c5cad0" : "#7a8088"}
+          scale={[18, 18, 1]}
+          color={day ? "#c5cad0" : "#6e747c"}
         />
       </Environment>
     </>
@@ -227,37 +242,65 @@ function Lighting({ high }: { high: boolean }) {
 }
 function Floor({ high }: { high: boolean }) {
   const mode = useStudio((s) => s.environment);
-  const day = mode === "daylight",
-    night = mode === "midnight";
+  const { day, night, bg, floor } = atmosphere(mode);
+  const fadeMap = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 512;
+    const ctx = canvas.getContext("2d")!;
+    const grad = ctx.createRadialGradient(256, 256, 40, 256, 256, 256);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(0.4, "rgba(0,0,0,0.45)");
+    grad.addColorStop(0.72, "rgba(0,0,0,0.88)");
+    grad.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 512, 512);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.NoColorSpace;
+    return texture;
+  }, []);
+  useEffect(() => () => fadeMap.dispose(), [fadeMap]);
   return (
     <>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
+        <circleGeometry args={[2000, 64]} />
+        <meshBasicMaterial color={bg} />
+      </mesh>
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
         position={[0, -0.015, 0]}
       >
-        <planeGeometry args={[120, 120]} />
+        <circleGeometry args={[32, 64]} />
         <MeshReflectorMaterial
           resolution={high ? 1024 : 512}
-          blur={[320, 110]}
-          mixBlur={0.92}
-          mixStrength={night ? 1.8 : day ? 3.1 : 2.4}
-          mixContrast={0.88}
-          roughness={night ? 0.92 : day ? 0.84 : 0.88}
-          metalness={night ? 0.1 : day ? 0.12 : 0.16}
-          color={day ? "#8b9198" : night ? "#14171c" : "#2a2e34"}
-          mirror={night ? 0.04 : day ? 0.08 : 0.06}
-          depthScale={0.42}
+          blur={[360, 130]}
+          mixBlur={0.96}
+          mixStrength={night ? 1.35 : day ? 2.2 : 1.85}
+          mixContrast={0.82}
+          roughness={night ? 0.94 : day ? 0.88 : 0.91}
+          metalness={night ? 0.06 : day ? 0.08 : 0.1}
+          color={floor}
+          mirror={night ? 0.02 : day ? 0.05 : 0.04}
+          depthScale={0.32}
           minDepthThreshold={0.4}
           maxDepthThreshold={1.4}
         />
       </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.011, 0]}>
+        <circleGeometry args={[32, 64]} />
+        <meshBasicMaterial
+          color={bg}
+          alphaMap={fadeMap}
+          transparent
+          depthWrite={false}
+        />
+      </mesh>
       <ContactShadows
         position={[0, 0.002, 0]}
-        opacity={night ? 0.7 : day ? 0.44 : 0.56}
-        scale={15}
-        blur={2.15}
-        far={4.2}
+        opacity={night ? 0.68 : day ? 0.4 : 0.52}
+        scale={48}
+        blur={2.35}
+        far={4.4}
         resolution={high ? 1024 : 512}
         color="#000000"
       />
@@ -296,20 +339,20 @@ function PostFX({ high }: { high: boolean }) {
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
       <N8AO
-        aoRadius={0.28}
-        intensity={night ? 0.9 : day ? 0.62 : 0.72}
+        aoRadius={0.24}
+        intensity={night ? 0.78 : day ? 0.48 : 0.58}
         halfRes
       />
       <Bloom
-        luminanceThreshold={2.2}
-        luminanceSmoothing={0.22}
-        intensity={0.14}
+        luminanceThreshold={3.4}
+        luminanceSmoothing={0.28}
+        intensity={0.05}
         mipmapBlur
       />
       <Vignette
         eskil={false}
-        offset={night ? 0.32 : day ? 0.44 : 0.36}
-        darkness={night ? 0.4 : day ? 0.18 : 0.3}
+        offset={night ? 0.34 : day ? 0.48 : 0.4}
+        darkness={night ? 0.34 : day ? 0.14 : 0.24}
       />
     </EffectComposer>
   );
@@ -328,11 +371,11 @@ export function VehicleCanvas() {
     <Canvas
       shadows
       dpr={[1, high ? 1.75 : 1.25]}
-      camera={{ position: [5.8, 2.7, -7.4], fov: 32, near: 0.035, far: 150 }}
+      camera={{ position: [5.8, 2.7, -7.4], fov: 32, near: 0.035, far: 400 }}
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 1.03,
+        toneMappingExposure: 0.97,
         alpha: false,
         powerPreference: "high-performance",
         preserveDrawingBuffer: true,

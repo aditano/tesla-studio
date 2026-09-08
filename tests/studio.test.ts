@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { VEHICLES, featuresForVehicle } from "../src/studio/catalog";
+import { PAINT, VEHICLES, featuresForVehicle } from "../src/studio/catalog";
+import { glassParams, paintParams } from "../src/studio/materials";
 import { useStudio } from "../src/studio/store";
 import { SHOTS, shotFor } from "../src/studio/scene/shots";
 import { coachwork } from "../src/studio/vehicles/coachwork";
@@ -47,6 +48,20 @@ assert.ok(!byId("cybercab").features.some((f) => ["charge", "trunk", "suspension
 assert.ok(!byId("cybertruck").features.some((f) => f.id === "doors"), "Cybertruck has no doors tour");
 assert.match(byId("cybertruck").marketNote ?? "", /authored/i, "Cybertruck marketNote must mention the authored study");
 assert.match(byId("cybertruck").marketNote ?? "", /illustrative/i, "Cybertruck marketNote must stay illustrative");
+const paintKeys = [
+  "color", "metalness", "roughness", "clearcoat", "clearcoatRoughness",
+  "envMapIntensity", "sheen", "sheenRoughness", "sheenColor", "reflectivity",
+  "anisotropy", "anisotropyRotation", "iridescence", "iridescenceIOR",
+  "iridescenceThicknessRange", "ior", "specularIntensity",
+];
+for (const paint of Object.values(PAINT)) {
+  const params = paintParams(paint);
+  assert.deepEqual(Object.keys(params).sort(), [...paintKeys].sort(), `paintParams(${paint.id}) API`);
+  assert.equal(params.color, paint.hex);
+}
+assert.equal(glassParams().transmission, 0);
+assert.equal(glassParams("#8fb4c8", 0.28, "lens").transmission, 0);
+console.log("PASS: paintParams API and glass transmission stay stable");
 assert.deepEqual(shotFor("model-3-heritage", "suspension"), SHOTS.suspension, "shotFor must fall back to SHOTS");
 for (const vehicle of VEHICLES) {
   const interior = shotFor(vehicle.id, "interior");

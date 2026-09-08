@@ -127,21 +127,21 @@ export function AuthoredVehicle({
         m.color.set(variant.spoiler ? "#333941" : "#555e67");
       if (m.name === "headlight_led") {
         m.emissive.set("#edf5ff");
-        m.emissiveIntensity = lights ? 2.5 : 0;
+        m.emissiveIntensity = lights ? 1.25 : 0;
         m.metalness = 0.12;
-        m.roughness = 0.2;
+        m.roughness = 0.22;
       }
       if (m.name === "signature_led") {
         m.emissive.set("#e8f1ff");
-        m.emissiveIntensity = lightBar ? 2.4 : 0;
+        m.emissiveIntensity = lightBar ? 1.4 : 0;
         m.metalness = 0.12;
-        m.roughness = 0.18;
+        m.roughness = 0.2;
       }
       if (m.name === "taillight_led") {
         m.emissive.set("#ed1828");
-        m.emissiveIntensity = lights ? 1.45 : 0.12;
+        m.emissiveIntensity = lights ? 1.05 : 0.1;
         m.metalness = 0.16;
-        m.roughness = 0.24;
+        m.roughness = 0.26;
       }
       if (m.name === "glass" || m.name === "lamp_lens") {
         m.transparent = true;
@@ -156,7 +156,7 @@ export function AuthoredVehicle({
         m.envMapIntensity = 1.35;
         if (m.name === "lamp_lens") {
           m.emissive.set("#9eb4c6");
-          m.emissiveIntensity = lights ? 0.12 : 0;
+          m.emissiveIntensity = lights ? 0.06 : 0;
         }
       }
       m.needsUpdate = true;
@@ -258,7 +258,7 @@ export function AuthoredVehicle({
       instance.materials.forEach((m) => {
         if (m.name === "signature_led")
           m.emissiveIntensity = lightBar
-            ? 2.4 + Math.sin(elapsed.current * 3) * 0.9
+            ? 1.4 + Math.sin(elapsed.current * 3) * 0.28
             : 0;
       });
   });

@@ -76,7 +76,7 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
   if (/Geocockpithrsub000/.test(name)) material.emissiveIntensity = 0.6;
   if (role === "headlight_led") {
     material.emissive.set("#edf5ff");
-    material.emissiveIntensity = 2.5;
+    material.emissiveIntensity = 1.25;
     material.metalness = 0.12;
     material.roughness = 0.2;
     material.transparent = false;
@@ -84,7 +84,7 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
   }
   if (role === "taillight_led") {
     material.emissive.set("#ed1828");
-    material.emissiveIntensity = 1.45;
+    material.emissiveIntensity = 1.05;
     material.metalness = 0.18;
     material.roughness = 0.24;
     material.transparent = false;
