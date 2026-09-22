@@ -75,15 +75,15 @@ const featureCopy: Record<string, string> = {
 };
 const cameraOnlyCopy: Record<string, string> = {
   doors:
-    "This mesh is a static artist export. This view inspects the doors without cutting the body.",
+    "Frameless doors, a flush beltline, and the cabin behind the glass. This mesh stays closed.",
   frunk:
-    "A closer look at the front storage area. The source mesh has no separate hood hinge, so the panel stays closed.",
+    "The front storage lid, seen from above. This mesh has no separate hood, so the panel stays closed.",
   trunk:
-    "A closer look at the rear cargo. The source mesh has no separate liftgate hinge, so the panel stays closed.",
+    "The rear opening and the tail lamps. This mesh has no separate liftgate, so the panel stays closed.",
   charge:
-    "The charge port sits on the driver-side rear quarter. This is a camera study of the static mesh.",
+    "The charge port sits on the driver-side rear quarter. This view stays on the closed body.",
   tonneau:
-    "A closer look at the bed cover. The source mesh has no separate tonneau hinge, so the panel stays closed.",
+    "The bed cover, seen from above. This mesh has no separate tonneau, so the panel stays closed.",
 };
 
 function featureCaption(
@@ -517,9 +517,10 @@ export function Studio() {
                   </button>
                 ))}
               </div>
-              <p className="feature-note">
-                Select a feature to move the camera. Articulated vehicles also
-                play a short demonstration.
+                <p className="feature-note">
+                Select a feature to move the camera. Cybertruck, Cybercab and
+                the heritage cars also open their panels. Highland and Juniper
+                stay closed.
               </p>
             </div>
           )}
@@ -562,9 +563,9 @@ export function Studio() {
           {heritage
             ? "Artist-built mesh · Original-generation design"
             : s.modelId === "model-3"
-              ? "Artist-built mesh · Highland · hinged panels"
+              ? "Artist-built mesh · Highland"
               : s.modelId === "model-y"
-                ? "Sketchfab mesh · Juniper · hinged panels"
+                ? "Sketchfab mesh · Juniper"
                 : s.modelId === "cybertruck"
                   ? "Original authored 3D study · articulated panels"
               : s.modelId === "cybercab"
@@ -617,11 +618,12 @@ export function Studio() {
                   demonstration. Press Escape to return to the exterior.
                 </p>
                 <p>
-                  Highland and Juniper use licensed artist meshes with
-                  presentation hinges so doors, hoods and trunks open on click.
-                  Cybertruck is an original authored stainless study with
-                  articulated panels and suspension — illustrative, not factory
-                  CAD. Cybercab is an original authored two-seat concept study,
+                  Highland and Juniper use licensed artist meshes. Their bodies
+                  stay closed, and those tours move the camera instead of
+                  cutting the paint. Cybertruck is an original authored
+                  stainless study with articulated panels and suspension —
+                  illustrative, not factory CAD. Cybercab is an original
+                  authored two-seat concept study,
                   not a production specification. Paint and wheel names follow
                   the North America 2026 Design Studio; trim availability is
                   illustrative.

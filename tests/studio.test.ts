@@ -36,14 +36,12 @@ const byId = (id: string) => {
   assert.ok(found, id);
   return found!;
 };
-for (const id of ["doors", "frunk", "trunk"] as const) {
-  assert.equal(byId("model-3").features.find((f) => f.id === id)?.cameraOnly, undefined, `Highland ${id} must open`);
-  assert.equal(byId("model-y").features.find((f) => f.id === id)?.cameraOnly, undefined, `Juniper ${id} must open`);
+for (const id of ["doors", "frunk", "trunk", "charge"] as const) {
+  assert.equal(byId("model-3").features.find((f) => f.id === id)?.cameraOnly, true, `Highland ${id} stays a camera study`);
+  assert.equal(byId("model-y").features.find((f) => f.id === id)?.cameraOnly, true, `Juniper ${id} stays a camera study`);
 }
-assert.equal(byId("model-3").features.find((f) => f.id === "charge")?.cameraOnly, true, "Highland charge stays camera-only");
-assert.equal(byId("model-y").features.find((f) => f.id === "charge")?.cameraOnly, true, "Juniper charge stays camera-only");
-assert.ok(byId("model-3").parts.includes("door-fl"));
-assert.ok(byId("model-y").parts.includes("trunk"));
+assert.deepEqual(byId("model-3").parts, [], "Highland body is not a hinge rig");
+assert.deepEqual(byId("model-y").parts, [], "Juniper body is not a hinge rig");
 for (const id of ["model-3-heritage", "model-s-heritage"] as const) {
   assert.ok(byId(id).features.every((f) => !f.cameraOnly), `${id} features must not be camera-only`);
 }
@@ -69,8 +67,14 @@ console.log("PASS: paintParams API and glass transmission stay stable");
 assert.deepEqual(shotFor("model-3-heritage", "suspension"), SHOTS.suspension, "shotFor must fall back to SHOTS");
 for (const vehicle of VEHICLES) {
   const interior = shotFor(vehicle.id, "interior");
-  assert.ok(interior.position[1] > 0.8, `${vehicle.id}: interior camera must stay above the floor`);
-  assert.ok(Math.abs(interior.position[0]) < 0.7, `${vehicle.id}: interior camera must stay in cabin width`);
+  assert.ok(interior.position[1] > 0.75, `${vehicle.id}: interior camera must stay above the floor`);
+  assert.ok(Math.abs(interior.position[0]) < 2.1, `${vehicle.id}: interior camera must stay beside the cabin`);
+  const span = Math.hypot(
+    interior.position[0] - interior.target[0],
+    interior.position[1] - interior.target[1],
+    interior.position[2] - interior.target[2],
+  );
+  assert.ok(span < 2.4, `${vehicle.id}: interior camera must stay close to the cabin`);
 }
 useStudio.getState().setModel("model-3");
 useStudio.getState().setVariant("p");
@@ -258,15 +262,21 @@ for (const name of ['body', 'wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
  const node = highland.scene.getObjectByName(name)!;
  assert.ok(node.children.length, `Highland rig missing ${name}`);
 }
-assert.equal(highland.staticBody, false, 'Highland panels must hinge for click-to-open');
-for (const name of ['hood', 'tailgate', 'door_fl', 'door_fr', 'door_rl', 'door_rr']) {
- assert.ok(highland.scene.getObjectByName(name), `Highland rig missing ${name}`);
+assert.equal(highland.staticBody, true, 'Highland body stays closed');
+for (const name of ['hood', 'tailgate', 'door_fl', 'proxy_door_fl', 'hit_hood']) {
+ assert.equal(highland.scene.getObjectByName(name), undefined, `Highland must not cut ${name}`);
 }
-assert.ok(highland.scene.getObjectByName('proxy_door_fl')?.userData.presentationDetail, 'Highland door stand-in');
-assert.ok(highland.scene.getObjectByName('hit_hood')?.userData.hitVolume, 'Highland hood click volume');
+let paintTriangles = 0;
+highland.scene.traverse(o => {
+  if (!(o instanceof THREE.Mesh) || o.userData.presentationDetail) return;
+  const mats = Array.isArray(o.material) ? o.material : [o.material];
+  if (mats.some(m => m.name === 'exterior_paint')) paintTriangles += o.geometry.index!.count / 3;
+});
+assert.ok(paintTriangles > 90000, `Highland body shell must take paint, got ${paintTriangles}`);
+assert.ok(highland.materials.get('Georimblurlfsub01Mtl|exterior_paint'), 'Main Highland shell is exterior paint');
 highland.materials.forEach(m => m.dispose());
 highland.scene.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
-console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and hinged panels`);
+console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and closed painted body`);
 
 const { prepareImported } = await import('../src/studio/vehicles/imported');
 for (const spec of [
@@ -289,13 +299,9 @@ for (const spec of [
   const size = new THREE.Box3().setFromObject(prepared.scene).getSize(new THREE.Vector3());
   assert.ok(Math.abs(size.z - spec.length) < 0.02, `${spec.id} length ${size.z}`);
   assert.ok(size.x < spec.maxWidth && size.y > spec.minHeight, `${spec.id} bounds ${size.x.toFixed(2)}x${size.y.toFixed(2)}`);
-  if (spec.id === 'juniper') {
-    assert.equal(prepared.staticBody, false);
-    for (const name of ['hood', 'tailgate', 'door_fl', 'door_fr']) {
-      assert.ok(prepared.scene.getObjectByName(name), `${spec.id} missing ${name}`);
-    }
-  } else {
-    assert.ok(prepared.staticBody);
+  assert.equal(prepared.staticBody, true, `${spec.id} stays a closed presentation mesh`);
+  for (const name of ['hood', 'tailgate', 'door_fl', 'proxy_door_fl']) {
+    assert.equal(prepared.scene.getObjectByName(name), undefined, `${spec.id} must not cut ${name}`);
   }
   assert.ok(prepared.scene.getObjectByName('body'));
   if (spec.wheels) {

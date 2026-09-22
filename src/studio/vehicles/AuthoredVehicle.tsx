@@ -8,7 +8,6 @@ import { useStudio } from "../store";
 import { prepareHighland } from "./highland";
 import { prepareImported } from "./imported";
 import { LampBeams } from "./LampBeams";
-import { panelActivity, updatePaintHoles } from "./panelRig";
 
 const partNames: Record<string, PartId> = {
   door_fl: "door-fl",
@@ -199,13 +198,6 @@ export function AuthoredVehicle({
     const damp = (a: number, b: number) =>
       reduced ? b : THREE.MathUtils.damp(a, b, 5, dt);
     if (!staticBody) {
-      const holes = panelActivity(open, feature);
-      if (highland || imported)
-        updatePaintHoles(
-          instance.materials,
-          holes,
-          highland ? "highland" : "juniper",
-        );
       for (const name of ["door_fl", "door_fr", "door_rl", "door_rr"]) {
         const door = rig[name];
         if (!door) continue;

@@ -1,15 +1,13 @@
 import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import {
-  HIGHLAND_PANEL_ORIGINS,
-  addPresentationPanels,
-  applyPaintHoles,
-  attachPanelGroups,
-} from "./panelRig";
 
 function highlandRole(name: string, x: number, y: number, z: number) {
   let role = name;
-  if (name === "Geohoodsub00021Mtl") role = "exterior_paint";
+  // The fused body shell is exported almost black and was never tagged as
+  // paint, so the configurator recolored only a secondary skin. Both shells
+  // are the exterior.
+  if (name === "Geohoodsub00021Mtl" || name === "Georimblurlfsub01Mtl")
+    role = "exterior_paint";
   if (name === "Georimblurlfsub021Mtl") role = "wheel_finish";
   // The artist shares this white material between the headlights and
   // seat upholstery. Keep the lamps white while recoloring the cabin.
@@ -105,8 +103,8 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
 }
 
 /** Presentation rig for RBLXSupercars' Highland mesh.
- * The source is a merged Sketchfab export. Wheels are separated; body
- * paint stays intact. Click-to-open uses cutaway holes plus stand-in panels. */
+ * The source is a merged Sketchfab export. Wheels are separated and the
+ * body paint stays intact. Door, hood and trunk tours are camera studies. */
 export function prepareHighland(source: THREE.Group) {
   source.updateMatrixWorld(true);
   const bounds = new THREE.Box3().setFromObject(source);
@@ -136,7 +134,6 @@ export function prepareHighland(source: THREE.Group) {
     groups[name] = group;
     scene.add(group);
   }
-  attachPanelGroups(body, groups, HIGHLAND_PANEL_ORIGINS);
   const materials = new Map<string, THREE.MeshPhysicalMaterial>();
   source.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
@@ -201,8 +198,6 @@ export function prepareHighland(source: THREE.Group) {
     }
     geometry.dispose();
   });
-  addPresentationPanels(groups, "highland", materials);
-  applyPaintHoles(materials);
   const spoiler = new THREE.Group();
   spoiler.name = "performance_spoiler";
   spoiler.userData.presentationDetail = true;
@@ -232,6 +227,6 @@ export function prepareHighland(source: THREE.Group) {
     scene,
     materials,
     ownsGeometry: true,
-    staticBody: false,
+    staticBody: true,
   };
 }

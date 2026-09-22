@@ -119,7 +119,7 @@ function ToneMap() {
   const mode = useStudio((s) => s.environment);
   const gl = useThree((s) => s.gl);
   const exposure =
-    mode === "daylight" ? 0.94 : mode === "midnight" ? 0.8 : 0.97;
+    mode === "daylight" ? 0.96 : mode === "midnight" ? 0.78 : 0.8;
   useEffect(() => {
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = exposure;
@@ -137,13 +137,13 @@ function Lighting({ high }: { high: boolean }) {
       <color attach="background" args={[bg]} />
       <fog attach="fog" args={[bg, fogNear, fogFar]} />
       <hemisphereLight
-        intensity={day ? 0.58 : night ? 0.18 : 0.3}
+        intensity={day ? 0.6 : night ? 0.18 : 0.34}
         color={day ? "#f3f6fa" : night ? "#9aadc4" : "#e6eef6"}
         groundColor={day ? "#6a7076" : night ? "#0a0c10" : "#2a2e33"}
       />
       <directionalLight
-        position={[-4.4, 10.2, -3.8]}
-        intensity={day ? 1.05 : night ? 0.26 : 0.62}
+        position={[5.2, 6.4, -5.4]}
+        intensity={day ? 1.8 : night ? 0.35 : 5.5}
         color={day ? "#fff4e4" : night ? "#c5d2e6" : "#f5f7fb"}
         castShadow
         shadow-mapSize={[high ? 2048 : 1024, high ? 2048 : 1024]}
@@ -159,13 +159,13 @@ function Lighting({ high }: { high: boolean }) {
       />
       <directionalLight
         position={[5.6, 5.2, 2.8]}
-        intensity={day ? 0.28 : night ? 0.1 : 0.18}
+        intensity={day ? 0.3 : night ? 0.1 : 0.22}
         color={night ? "#8aa0c4" : "#fff6ec"}
       />
       <Environment resolution={high ? 1024 : 256} frames={1} key={mode}>
         <Lightformer
           form="rect"
-          intensity={day ? 2.4 : night ? 1.15 : 2.6}
+          intensity={day ? 1.7 : night ? 0.85 : 0.55}
           position={[0, 9.2, 0]}
           rotation={[Math.PI / 2, 0, 0]}
           scale={day ? [28, 20, 1] : [22, 16, 1]}
@@ -173,7 +173,7 @@ function Lighting({ high }: { high: boolean }) {
         />
         <Lightformer
           form="rect"
-          intensity={day ? 1.2 : night ? 1.8 : 2.7}
+          intensity={day ? 0.85 : night ? 1.2 : 0.55}
           position={[0, 8.6, -0.4]}
           rotation={[Math.PI / 2, 0, 0]}
           scale={[20, day ? 2.4 : 0.7, 1]}
@@ -181,7 +181,7 @@ function Lighting({ high }: { high: boolean }) {
         />
         <Lightformer
           form="rect"
-          intensity={day ? 0.7 : night ? 1.1 : 1.5}
+          intensity={day ? 0.7 : night ? 1.1 : 0.7}
           position={[0, 8.5, 1.6]}
           rotation={[Math.PI / 2, 0, 0]}
           scale={[16, day ? 1.6 : 0.45, 1]}
@@ -189,7 +189,7 @@ function Lighting({ high }: { high: boolean }) {
         />
         <Lightformer
           form="rect"
-          intensity={day ? 1.05 : night ? 1.4 : 1.8}
+          intensity={day ? 1.05 : night ? 1.4 : 0.85}
           position={[-8.2, 3.4, 0]}
           rotation={[0, Math.PI / 2, 0]}
           scale={[16, day ? 6 : 4.2, 1]}
@@ -197,7 +197,7 @@ function Lighting({ high }: { high: boolean }) {
         />
         <Lightformer
           form="rect"
-          intensity={day ? 0.95 : night ? 1.15 : 1.55}
+          intensity={day ? 0.95 : night ? 1.15 : 0.7}
           position={[8.2, 3.1, 0.4]}
           rotation={[0, -Math.PI / 2, 0]}
           scale={[15, day ? 5.4 : 3.6, 1]}
@@ -205,7 +205,7 @@ function Lighting({ high }: { high: boolean }) {
         />
         <Lightformer
           form="rect"
-          intensity={day ? 1.55 : night ? 0.85 : 1.7}
+          intensity={day ? 1.55 : night ? 0.85 : 0.75}
           position={[0, 3.6, 10.5]}
           rotation={[0, Math.PI, 0]}
           scale={[14, 5, 1]}
@@ -213,7 +213,7 @@ function Lighting({ high }: { high: boolean }) {
         />
         <Lightformer
           form="rect"
-          intensity={day ? 1.25 : night ? 1.05 : 1.45}
+          intensity={day ? 1.25 : night ? 1.05 : 0.65}
           position={[0, 3.2, -10.8]}
           scale={[12, 4.6, 1]}
           color="#ffffff"
@@ -221,7 +221,7 @@ function Lighting({ high }: { high: boolean }) {
         {!day && (
           <Lightformer
             form="ring"
-            intensity={night ? 0.85 : 1.2}
+            intensity={night ? 0.85 : 0.55}
             position={[0, 6.4, -0.6]}
             rotation={[Math.PI / 2, 0, 0]}
             scale={8}
@@ -401,7 +401,7 @@ function PostFX({ high }: { high: boolean }) {
       <Bloom
         luminanceThreshold={night ? 0.55 : 0.78}
         luminanceSmoothing={0.22}
-        intensity={night ? 0.62 : day ? 0.28 : 0.42}
+        intensity={night ? 0.4 : day ? 0.18 : 0.22}
         mipmapBlur
       />
       <Vignette
@@ -426,11 +426,11 @@ export function VehicleCanvas() {
     <Canvas
       shadows
       dpr={[1, high ? 1.75 : 1.25]}
-      camera={{ position: [5.8, 2.7, -7.4], fov: 32, near: 0.035, far: 400 }}
+      camera={{ position: [4.35, 1.58, -5.45], fov: 32, near: 0.035, far: 400 }}
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 0.97,
+        toneMappingExposure: 1,
         alpha: false,
         powerPreference: "high-performance",
         preserveDrawingBuffer: true,
