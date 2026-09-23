@@ -83,12 +83,23 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
   }
   if (/Geocockpithrsub000/.test(name)) material.emissiveIntensity = 0.6;
   if (role === "headlight_led") {
-    material.emissive.set("#edf5ff");
-    material.emissiveIntensity = 4.8;
-    material.metalness = 0.12;
-    material.roughness = 0.2;
+    material.emissive.set("#f4f8ff");
+    material.emissiveIntensity = 0;
+    material.metalness = 0.1;
+    material.roughness = 0.22;
     material.transparent = false;
     material.opacity = 1;
+    material.toneMapped = true;
+    // The reflector sits behind the lens, so it needs more output to read.
+    material.userData.lampGain = 4.8;
+  }
+  if (role === "lamp_lens") {
+    material.side = THREE.FrontSide;
+    material.userData.lampCover = true;
+    material.color.set("#d5e2ee");
+    material.emissive.set("#000000");
+    material.emissiveIntensity = 0;
+    material.opacity = 0.36;
   }
   if (role === "taillight_led") {
     material.emissive.set("#ed1828");

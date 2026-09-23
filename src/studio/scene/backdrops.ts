@@ -77,8 +77,8 @@ export const BACKDROPS: readonly Backdrop[] = [
     vignetteOffset: 0.4,
     vignetteDarkness: 0.24,
     ao: 0.58,
-    beam: 6400,
-    pool: 0.46,
+    beam: 1100,
+    pool: 0.38,
   },
   {
     id: "daylight",
@@ -109,8 +109,8 @@ export const BACKDROPS: readonly Backdrop[] = [
     vignetteOffset: 0.48,
     vignetteDarkness: 0.14,
     ao: 0.48,
-    beam: 2800,
-    pool: 0.2,
+    beam: 420,
+    pool: 0.14,
   },
   {
     id: "midnight",
@@ -141,8 +141,8 @@ export const BACKDROPS: readonly Backdrop[] = [
     vignetteOffset: 0.34,
     vignetteDarkness: 0.34,
     ao: 0.78,
-    beam: 12000,
-    pool: 0.7,
+    beam: 1900,
+    pool: 0.52,
   },
   {
     id: "mars",
@@ -173,8 +173,8 @@ export const BACKDROPS: readonly Backdrop[] = [
     vignetteOffset: 0.32,
     vignetteDarkness: 0.28,
     ao: 0.42,
-    beam: 7000,
-    pool: 0.42,
+    beam: 900,
+    pool: 0.28,
   },
   {
     id: "forest",
@@ -205,8 +205,8 @@ export const BACKDROPS: readonly Backdrop[] = [
     vignetteOffset: 0.36,
     vignetteDarkness: 0.3,
     ao: 0.62,
-    beam: 6200,
-    pool: 0.4,
+    beam: 900,
+    pool: 0.28,
   },
   {
     id: "night-city",
@@ -237,8 +237,8 @@ export const BACKDROPS: readonly Backdrop[] = [
     vignetteOffset: 0.28,
     vignetteDarkness: 0.4,
     ao: 0.7,
-    beam: 14000,
-    pool: 0.74,
+    beam: 2100,
+    pool: 0.55,
   },
   {
     id: "desert",
@@ -269,8 +269,8 @@ export const BACKDROPS: readonly Backdrop[] = [
     vignetteOffset: 0.42,
     vignetteDarkness: 0.16,
     ao: 0.4,
-    beam: 3600,
-    pool: 0.24,
+    beam: 480,
+    pool: 0.16,
   },
 ];
 

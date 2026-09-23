@@ -288,6 +288,14 @@ highland.scene.traverse(o => {
 });
 assert.ok(paintTriangles > 90000, `Highland body shell must take paint, got ${paintTriangles}`);
 assert.ok(highland.materials.get('Georimblurlfsub01Mtl|exterior_paint'), 'Main Highland shell is exterior paint');
+assert.ok(
+  [...highland.materials.values()].some((m) => m.name === "lamp_lens" && m.userData.lampCover === true),
+  "Highland nose glass is a clear lamp cover, not cabin glass",
+);
+assert.ok(
+  (highland.materials.get("Ln7Mtl|headlight_led")?.userData.lampGain as number) > 4,
+  "Highland reflector must be bright enough to read through the lens",
+);
 highland.materials.forEach(m => m.dispose());
 highland.scene.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
 console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and closed painted body`);
@@ -321,6 +329,33 @@ for (const spec of [
   if (spec.wheels) {
     for (const name of ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
       assert.ok(prepared.scene.getObjectByName(name), `${spec.id} missing ${name}`);
+    }
+  }
+  if (spec.id === "juniper") {
+    let skin = 0;
+    let housing = 0;
+    prepared.scene.updateMatrixWorld(true);
+    prepared.scene.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      const front = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()).z < -1.2;
+      const tris = (o.geometry.index?.count ?? 0) / 3;
+      for (const m of mats) {
+        if (!front) continue;
+        if (m.name === "headlight_led" || m.name === "signature_led") skin += tris;
+        if (m.name === "lamp_housing") housing += tris;
+      }
+    });
+    assert.ok(prepared.materials.size > 0);
+    assert.ok([...prepared.materials.values()].some((m) => m.name === "headlight_led"), "Juniper corner lamps stay emitters");
+    assert.ok([...prepared.materials.values()].some((m) => m.name === "signature_led"), "Juniper light bar stays an emitter");
+    assert.ok(skin > 80, `Juniper lamp faces should be a visible skin, got ${skin} tris`);
+    assert.ok(housing > skin, `Juniper lamp depth should stay a housing (${housing} vs skin ${skin})`);
+    for (const m of prepared.materials.values()) {
+      if (m.name === "headlight_led" || m.name === "signature_led") {
+        assert.equal(m.toneMapped, true, "lamp faces stay tone mapped so bloom can halo them");
+        assert.equal(m.emissiveIntensity, 0, "emitters start dark until the headlight control turns them on");
+      }
     }
   }
   prepared.materials.forEach(m => m.dispose());

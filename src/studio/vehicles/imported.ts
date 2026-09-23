@@ -40,19 +40,87 @@ function inferRole(materialName: string, objectName: string) {
   return materialName || "satin_trim";
 }
 
-/** Juniper's front lamps were exported as fascia-sized emissive blocks.
- * Those read as glowing walls. Keep them as dark housings; the studio draws
- * a separate lamp face, beam and pool on the nose. */
+/** Bulky taillight extrusions read as glowing blocks. The front lamps are
+ * split separately so only their forward skin stays emissive. */
 function refineImportedRole(
   role: string,
-  center: THREE.Vector3,
+  _center: THREE.Vector3,
   size: THREE.Vector3,
 ) {
-  if (role === "signature_led" && center.z < -1.4 && size.x > 0.8)
-    return "lamp_housing";
   if (role === "taillight_led" && size.z > 0.35 && size.y > 0.12)
     return "lamp_housing";
   return role;
+}
+
+/** How far behind the nose a triangle still counts as the lamp face. */
+const LAMP_SKIN = 0.04;
+
+function takeTriangles(
+  geometry: THREE.BufferGeometry,
+  keep: (centroid: THREE.Vector3) => boolean,
+) {
+  const srcPos = geometry.getAttribute("position");
+  const srcNormal = geometry.getAttribute("normal");
+  const srcUv = geometry.getAttribute("uv");
+  const index = geometry.index;
+  const triCount = index ? index.count : srcPos.count;
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const centroid = new THREE.Vector3();
+  const vertex = new THREE.Vector3();
+  for (let i = 0; i < triCount; i += 3) {
+    const ids = [0, 1, 2].map((k) => (index ? index.getX(i + k) : i + k));
+    centroid.set(0, 0, 0);
+    for (const id of ids) centroid.add(vertex.fromBufferAttribute(srcPos, id));
+    centroid.multiplyScalar(1 / 3);
+    if (!keep(centroid)) continue;
+    for (const id of ids) {
+      positions.push(srcPos.getX(id), srcPos.getY(id), srcPos.getZ(id));
+      if (srcNormal)
+        normals.push(srcNormal.getX(id), srcNormal.getY(id), srcNormal.getZ(id));
+      if (srcUv) uvs.push(srcUv.getX(id), srcUv.getY(id));
+    }
+  }
+  if (!positions.length) return null;
+  const next = new THREE.BufferGeometry();
+  next.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  if (normals.length === positions.length)
+    next.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  else next.computeVertexNormals();
+  if (uvs.length === (positions.length / 3) * 2)
+    next.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  const ids = new Uint32Array(positions.length / 3);
+  for (let i = 0; i < ids.length; i++) ids[i] = i;
+  next.setIndex(new THREE.BufferAttribute(ids, 1));
+  next.computeBoundingSphere();
+  return next;
+}
+
+/** Juniper exported each lamp as a deep emissive extrusion, so the whole
+ * volume glowed as a fascia wall. Keep a thin forward skin as the LED and
+ * turn the depth into a dark housing. Upper skin is the light bar; the
+ * lower skins are the corner projectors (one mesh holds both sides). */
+function splitFrontLamp(geometry: THREE.BufferGeometry) {
+  geometry.computeBoundingBox();
+  const minZ = geometry.boundingBox?.min.z ?? 0;
+  const skin = minZ + LAMP_SKIN;
+  const pieces: { role: string; geometry: THREE.BufferGeometry }[] = [];
+  const upper = takeTriangles(
+    geometry,
+    (c) => c.z <= skin && c.y > 0.72,
+  );
+  const lower = takeTriangles(
+    geometry,
+    (c) => c.z <= skin && c.y <= 0.72,
+  );
+  const housing = takeTriangles(geometry, (c) => c.z > skin);
+  if (upper) pieces.push({ role: "signature_led", geometry: upper });
+  if (lower) pieces.push({ role: "headlight_led", geometry: lower });
+  if (housing) pieces.push({ role: "lamp_housing", geometry: housing });
+  if (!pieces.length) return null;
+  geometry.dispose();
+  return pieces;
 }
 
 function treatImported(material: THREE.MeshPhysicalMaterial, role: string) {
@@ -133,11 +201,14 @@ function treatImported(material: THREE.MeshPhysicalMaterial, role: string) {
   if (role === "headlight_led" || role === "signature_led") {
     material.transparent = false;
     material.opacity = 1;
-    material.metalness = 0.12;
-    material.roughness = 0.2;
-    material.emissive.set("#edf5ff");
-    material.emissiveIntensity = 4.8;
-    material.color.set("#e8f1ff");
+    material.metalness = 0.08;
+    material.roughness = 0.24;
+    material.emissive.set("#f4f8ff");
+    material.emissiveIntensity = 0;
+    material.color.set("#d5deea");
+    material.toneMapped = true;
+    // Directly visible skins. Highland's buried reflector uses a higher gain.
+    material.userData.lampGain = role === "signature_led" ? 1.45 : 2.05;
   }
   if (role === "taillight_led") {
     material.transparent = false;
@@ -229,9 +300,7 @@ export function prepareImported(source: THREE.Group, model: string) {
     const size = box.getSize(new THREE.Vector3());
     // Names describe customization roles, not material identity. Two trim
     // materials can share a role while retaining different textures or finishes.
-    const copies = originals.map((original) => {
-      const inferred = inferRole(original.name, object.name);
-      const role = refineImportedRole(inferred, center, size);
+    const adopt = (original: THREE.Material, role: string) => {
       const key = original.uuid + "|" + role;
       let material = materials.get(key);
       if (!material) {
@@ -244,8 +313,7 @@ export function prepareImported(source: THREE.Group, model: string) {
         materials.set(key, material);
       }
       return material;
-    });
-    const material = Array.isArray(object.material) ? copies : copies[0];
+    };
     // Flatten the hierarchy into the presentation rig without losing the
     // source node's translation, rotation or scale.
     const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
@@ -268,12 +336,46 @@ export function prepareImported(source: THREE.Group, model: string) {
     }
     const origin = origins[part];
     if (origin) geometry.translate(-origin[0], -origin[1], -origin[2]);
-    geometry.computeBoundingSphere();
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.name = object.name;
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    groups[part].add(mesh);
+    const inferred = inferRole(originals[0]?.name ?? "", object.name);
+    const frontLamp =
+      originals.length === 1 &&
+      inferred === "signature_led" &&
+      center.z < -1.35 &&
+      size.z > 0.15 &&
+      size.x > 0.8;
+    const pieces = frontLamp ? splitFrontLamp(geometry) : null;
+    const jobs = pieces ?? [
+      {
+        role: refineImportedRole(inferred, center, size),
+        geometry,
+      },
+    ];
+    // Multi-material meshes keep one geometry and a material per slot.
+    // Front lamps are single-material extrusions and are split above.
+    if (!pieces && originals.length > 1) {
+      const material = originals.map((original) =>
+        adopt(
+          original,
+          refineImportedRole(inferRole(original.name, object.name), center, size),
+        ),
+      );
+      geometry.computeBoundingSphere();
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = object.name;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      groups[part].add(mesh);
+      return;
+    }
+    for (const piece of jobs) {
+      const material = adopt(originals[0], piece.role);
+      piece.geometry.computeBoundingSphere();
+      const mesh = new THREE.Mesh(piece.geometry, material);
+      mesh.name = object.name;
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      groups[part].add(mesh);
+    }
   });
 
   if (model === "juniper" || model === "model-y")

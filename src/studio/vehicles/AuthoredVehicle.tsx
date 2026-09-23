@@ -126,17 +126,31 @@ export function AuthoredVehicle({
       if (m.name === "brake_caliper") m.color.set(variant.caliper);
       if (m.name === "wheel_finish")
         m.color.set(variant.spoiler ? "#333941" : "#555e67");
-      if (m.name === "headlight_led") {
-        m.emissive.set("#edf5ff");
-        m.emissiveIntensity = lights ? 4.8 : 0;
-        m.metalness = 0.12;
-        m.roughness = 0.22;
-      }
-      if (m.name === "signature_led") {
-        m.emissive.set("#e8f1ff");
-        m.emissiveIntensity = lightBar ? 5.2 : 0;
-        m.metalness = 0.12;
-        m.roughness = 0.2;
+      if (m.name === "headlight_led" || m.name === "signature_led") {
+        const lit =
+          m.name === "signature_led" ? lights && lightBar : lights;
+        const gain =
+          typeof m.userData.lampGain === "number"
+            ? m.userData.lampGain
+            : m.name === "signature_led"
+              ? 4.4
+              : 3.8;
+        m.toneMapped = true;
+        m.transparent = false;
+        m.opacity = 1;
+        if (lit) {
+          m.color.set("#f7fbff");
+          m.emissive.set(m.name === "signature_led" ? "#f7fbff" : "#eef4ff");
+          m.emissiveIntensity = gain;
+          m.metalness = 0.04;
+          m.roughness = 0.2;
+        } else {
+          m.color.set("#6d7c8c");
+          m.emissive.set("#000000");
+          m.emissiveIntensity = 0;
+          m.metalness = 0.78;
+          m.roughness = 0.18;
+        }
       }
       if (m.name === "taillight_led") {
         m.emissive.set("#ed1828");
@@ -144,21 +158,35 @@ export function AuthoredVehicle({
         m.metalness = 0.16;
         m.roughness = 0.26;
       }
-      if (m.name === "glass" || m.name === "lamp_lens") {
+      if (m.name === "lamp_lens" && m.userData.lampCover) {
         m.transparent = true;
-        m.opacity = m.name === "glass" ? 0.3 : 0.48;
         m.transmission = 0;
         m.thickness = 0;
-        m.roughness = 0.06;
-        m.metalness = 0.04;
+        m.roughness = 0.04;
+        m.metalness = 0.06;
+        m.clearcoat = 1;
+        m.clearcoatRoughness = 0.04;
+        m.depthWrite = false;
+        m.envMapIntensity = 1.5;
+        m.emissive.set("#000000");
+        m.emissiveIntensity = 0;
+        m.color.set(lights ? "#e8f1f8" : "#b7c6d4");
+        m.opacity = lights ? 0.18 : 0.4;
+        m.side = THREE.FrontSide;
+      } else if (m.name === "glass" || m.name === "lamp_lens") {
+        m.transparent = true;
+        m.opacity = m.name === "glass" ? 0.3 : 0.42;
+        m.transmission = 0;
+        m.thickness = 0;
+        m.roughness = 0.05;
+        m.metalness = 0.12;
         m.clearcoat = 1;
         m.clearcoatRoughness = 0.05;
         m.depthWrite = false;
         m.envMapIntensity = 1.35;
-        if (m.name === "lamp_lens") {
-          m.emissive.set("#9eb4c6");
-          m.emissiveIntensity = lights ? 0.45 : 0;
-        }
+        m.emissive.set("#000000");
+        m.emissiveIntensity = 0;
+        if (m.name === "lamp_lens") m.color.set("#8ea0b0");
       }
       m.needsUpdate = true;
     });
@@ -282,10 +310,11 @@ export function AuthoredVehicle({
     }
     if (feature === "lightbar" && !reduced)
       instance.materials.forEach((m) => {
-        if (m.name === "signature_led")
-          m.emissiveIntensity = lightBar
-            ? 5.2 + Math.sin(elapsed.current * 3) * 0.55
-            : 0;
+        if (m.name !== "signature_led") return;
+        const gain =
+          typeof m.userData.lampGain === "number" ? m.userData.lampGain : 4.4;
+        m.emissiveIntensity =
+          lights && lightBar ? gain + Math.sin(elapsed.current * 3) * 0.35 : 0;
       });
   });
   const click = (event: ThreeEvent<MouseEvent>) => {
