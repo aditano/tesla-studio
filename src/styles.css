@@ -182,15 +182,7 @@ h1 span {
   font-size: 11px;
   color: #c3cbd6;
   margin-top: 17px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.trim-line span {
-  height: 3px;
-  width: 3px;
-  border-radius: 50%;
-  background: #9aa6b6;
+  line-height: 1.45;
 }
 .control-panel {
   position: absolute;
@@ -800,6 +792,7 @@ strong {
 @media (max-width: 767px) {
   .studio-app {
     min-height: 480px;
+    --sheet-max: min(56dvh, 500px, calc(100dvh - 360px));
   }
   .studio-header {
     height: 62px;
@@ -821,12 +814,27 @@ strong {
     top: 72px;
     left: 15px;
     right: 0;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+    flex-wrap: nowrap;
     gap: 0;
-    padding-right: 15px;
-    scrollbar-width: none;
+    padding: 0 18px 6px 0;
+    scroll-padding-inline: 18px;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #ffffff73 transparent;
+  }
+  .model-nav::-webkit-scrollbar {
+    height: 3px;
+  }
+  .model-nav::-webkit-scrollbar-thumb {
+    background: #ffffff73;
+    border-radius: 99px;
   }
   .model-nav button {
+    flex: 0 0 auto;
     font-size: 11px;
     padding: 9px 13px;
   }
@@ -839,6 +847,7 @@ strong {
   .vehicle-title {
     top: 142px;
     left: 24px;
+    right: 24px;
   }
   h1 {
     font-size: 34px;
@@ -861,13 +870,15 @@ strong {
     right: 12px;
     bottom: max(12px, env(safe-area-inset-bottom));
     width: auto;
-    max-height: 34dvh;
+    max-height: var(--sheet-max);
     border-radius: 12px;
     min-height: 55px;
+    overflow: hidden;
     background: #151b24ed;
   }
   .sheet-handle {
     display: flex;
+    flex-shrink: 0;
     justify-content: center;
     align-items: center;
     min-height: 17px;
@@ -887,49 +898,87 @@ strong {
     font-size: 11px;
   }
   .panel-content {
-    padding: 0 16px 20px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 16px 10px;
+  }
+  .panel-content > [role="tabpanel"] {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #8b97a6 transparent;
   }
   .section-label {
-    margin-top: 19px;
+    margin: 8px 0 6px;
   }
   .variant-options {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
     gap: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    padding-bottom: 2px;
+    scrollbar-width: none;
   }
   .variant-options button {
-    padding: 10px 8px;
-    min-height: 62px;
+    flex: 0 0 auto;
+    width: auto;
+    padding: 7px 12px;
+    min-height: 44px;
+  }
+  .variant-options strong,
+  .variant-options small {
+    white-space: nowrap;
   }
   .variant-options strong {
-    font-size: 9px;
-    line-height: 1.4;
+    font-size: 11px;
+    line-height: 1.3;
   }
   .variant-options small {
-    font-size: 8px;
-    line-height: 1.4;
+    font-size: 9px;
+    line-height: 1.3;
   }
   .variant-options i {
     display: none;
   }
-  .variant-options:has(> button:nth-child(2):last-child) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .paint-options,
+  .interior-options,
+  .backdrop-chips {
+    max-width: 100%;
   }
-  .variant-options:has(> button:only-child) {
-    grid-template-columns: 1fr;
+  .interior-options,
+  .backdrop-chips {
+    flex-wrap: wrap;
   }
   .paint-options {
+    flex-wrap: nowrap;
     gap: 9px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    touch-action: pan-x;
+    scrollbar-width: none;
   }
   .paint-options button {
     height: 32px;
     width: 32px;
+    flex: 0 0 auto;
   }
   .primary-action {
-    margin-top: 20px;
+    margin-top: 8px;
+    padding: 10px 12px;
+    min-height: 40px;
   }
   .stage-tools {
     left: 24px;
-    bottom: calc(34dvh + 25px);
+    bottom: calc(var(--sheet-max) + 20px);
     gap: 7px;
   }
   .tool-pill {
@@ -944,19 +993,22 @@ strong {
   }
   .feature-caption {
     left: 24px;
-    bottom: calc(34dvh + 69px);
-    width: 230px;
-    padding: 12px 12px 10px 0;
+    bottom: calc(var(--sheet-max) + 62px);
+    width: min(230px, calc(100vw - 48px));
+    padding: 0;
+  }
+  .feature-caption .eyebrow {
+    margin-bottom: 2px;
   }
   .feature-caption h2 {
-    font-size: 19px;
-    margin-bottom: 5px;
+    font-size: 18px;
+    margin-bottom: 2px;
   }
   .feature-caption > p:not(.eyebrow) {
     display: none;
   }
   .caption-actions {
-    margin-top: 8px;
+    margin-top: 4px;
   }
   .caption-actions button {
     font-size: 8px;
@@ -994,7 +1046,17 @@ strong {
     font-size: 9px;
   }
   .lighting-controls {
-    margin-top: 20px;
+    flex: 0 0 auto;
+    margin-top: 8px;
+    padding-top: 2px;
+    background: #151b24f2;
+  }
+  .backdrop-chips {
+    gap: 6px;
+  }
+  .backdrop-chips button {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 }
 @media (max-height: 720px) and (min-width: 768px) {

@@ -302,7 +302,7 @@ export function Studio() {
         </h1>
         <p className="trim-line">
           {variant.name}
-          <span />
+          {" · "}
           {paint.name}
         </p>
       </section>
