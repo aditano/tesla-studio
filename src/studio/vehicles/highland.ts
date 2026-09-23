@@ -65,16 +65,18 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
   }
   if (role === "glass" || role === "lamp_lens" || material.transparent) {
     material.transparent = true;
-    material.roughness = role === "lamp_lens" ? 0.04 : 0.07;
+    material.roughness = role === "lamp_lens" ? 0.16 : 0.07;
     material.metalness = 0.04;
-    material.opacity = role === "lamp_lens" ? 0.38 : 0.34;
+    material.opacity = role === "lamp_lens" ? 0.72 : 0.34;
     material.transmission = 0;
     material.thickness = 0;
     material.clearcoat = 1;
-    material.clearcoatRoughness = 0.04;
+    material.clearcoatRoughness = role === "lamp_lens" ? 0.12 : 0.04;
     material.depthWrite = false;
-    material.envMapIntensity = role === "lamp_lens" ? 1.6 : 1.3;
-    material.color.set(role === "lamp_lens" ? "#c5d4e2" : material.color);
+    material.envMapIntensity = role === "lamp_lens" ? 0.85 : 1.3;
+    material.emissive.set("#000000");
+    material.emissiveIntensity = 0;
+    if (role === "lamp_lens") material.color.set("#1a2228");
   }
   if (name === "Geohoodsub00031Mtl") {
     material.metalness = 0.92;
@@ -83,12 +85,13 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
   }
   if (/Geocockpithrsub000/.test(name)) material.emissiveIntensity = 0.6;
   if (role === "headlight_led") {
-    material.emissive.set("#edf5ff");
-    material.emissiveIntensity = 4.8;
-    material.metalness = 0.12;
-    material.roughness = 0.2;
+    material.emissive.set("#d5e4f6");
+    material.emissiveIntensity = 1.15;
+    material.metalness = 0.08;
+    material.roughness = 0.34;
     material.transparent = false;
     material.opacity = 1;
+    material.toneMapped = true;
   }
   if (role === "taillight_led") {
     material.emissive.set("#ed1828");
