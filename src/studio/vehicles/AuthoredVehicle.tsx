@@ -127,16 +127,20 @@ export function AuthoredVehicle({
       if (m.name === "wheel_finish")
         m.color.set(variant.spoiler ? "#333941" : "#555e67");
       if (m.name === "headlight_led") {
-        m.emissive.set("#edf5ff");
-        m.emissiveIntensity = lights ? 4.8 : 0;
-        m.metalness = 0.12;
-        m.roughness = 0.22;
+        m.emissive.set("#f3f7ff");
+        m.emissiveIntensity = lights ? 1.65 : 0;
+        m.color.set("#f7fbff");
+        m.metalness = 0.04;
+        m.roughness = 0.32;
+        m.toneMapped = true;
       }
       if (m.name === "signature_led") {
-        m.emissive.set("#e8f1ff");
-        m.emissiveIntensity = lightBar ? 5.2 : 0;
-        m.metalness = 0.12;
-        m.roughness = 0.2;
+        m.emissive.set("#f3f7ff");
+        m.emissiveIntensity = lights && lightBar ? 1.4 : 0;
+        m.color.set("#f7fbff");
+        m.metalness = 0.04;
+        m.roughness = 0.3;
+        m.toneMapped = true;
       }
       if (m.name === "taillight_led") {
         m.emissive.set("#ed1828");
@@ -156,8 +160,12 @@ export function AuthoredVehicle({
         m.depthWrite = false;
         m.envMapIntensity = 1.35;
         if (m.name === "lamp_lens") {
-          m.emissive.set("#9eb4c6");
-          m.emissiveIntensity = lights ? 0.45 : 0;
+          m.emissive.set("#000000");
+          m.emissiveIntensity = 0;
+          m.color.set("#1c262e");
+          m.opacity = 0.7;
+          m.roughness = 0.16;
+          m.envMapIntensity = 0.8;
         }
       }
       m.needsUpdate = true;
@@ -283,9 +291,10 @@ export function AuthoredVehicle({
     if (feature === "lightbar" && !reduced)
       instance.materials.forEach((m) => {
         if (m.name === "signature_led")
-          m.emissiveIntensity = lightBar
-            ? 5.2 + Math.sin(elapsed.current * 3) * 0.55
-            : 0;
+          m.emissiveIntensity =
+            lights && lightBar
+              ? 1.4 + Math.sin(elapsed.current * 3) * 0.2
+              : 0;
       });
   });
   const click = (event: ThreeEvent<MouseEvent>) => {

@@ -4,66 +4,160 @@ import * as THREE from "three";
 import { backdropById } from "../scene/backdrops";
 import { useStudio } from "../store";
 
-type Face = {
+type Chip = {
   position: [number, number, number];
   size: [number, number];
+  /** Yaw so the element sits on a curved fascia instead of a flat slab. */
+  yaw?: number;
   bar?: boolean;
+  round?: boolean;
 };
 
-/** Lamp faces sit on the nose. Authored and imported meshes often bury the
- * emitter inside a housing, so these planes are the visible lamp. */
-const FACES: Record<string, Face[]> = {
-  "model-3": [
-    { position: [-0.58, 0.66, -2.4], size: [0.46, 0.11] },
-    { position: [0.58, 0.66, -2.4], size: [0.46, 0.11] },
-  ],
-  "model-y": [
-    { position: [0, 0.84, -2.3], size: [1.72, 0.04], bar: true },
-    { position: [-0.7, 0.62, -2.27], size: [0.32, 0.08] },
-    { position: [0.7, 0.62, -2.27], size: [0.32, 0.08] },
-  ],
-  "model-3-heritage": [
-    { position: [-0.62, 0.64, -2.34], size: [0.38, 0.12] },
-    { position: [0.62, 0.64, -2.34], size: [0.38, 0.12] },
-  ],
-  "model-s-heritage": [
-    { position: [-0.72, 0.66, -2.47], size: [0.42, 0.13] },
-    { position: [0.72, 0.66, -2.47], size: [0.42, 0.13] },
-  ],
-  cybertruck: [
-    { position: [0, 1.01, -2.875], size: [1.96, 0.045], bar: true },
-    { position: [-0.78, 0.58, -2.868], size: [0.34, 0.09] },
-    { position: [0.78, 0.58, -2.868], size: [0.34, 0.09] },
-  ],
-  cybercab: [
-    { position: [0, 0.72, -2.085], size: [1.62, 0.05], bar: true },
-    { position: [-0.62, 0.66, -2.09], size: [0.24, 0.055] },
-    { position: [0.62, 0.66, -2.09], size: [0.24, 0.055] },
-  ],
+type Rig = {
+  /** Most-forward body station. The pool starts here and runs down the road. */
+  noseZ: number;
+  spots: [number, number, number][];
+  chips: Chip[];
+};
+
+function curvedLamp(
+  side: number,
+  samples: { t: number; x: number; y: number; z: number }[],
+  size: [number, number],
+): Chip[] {
+  return samples.map((sample, index) => {
+    const next = samples[Math.min(samples.length - 1, index + 1)];
+    const yaw = Math.atan2(next.z - sample.z, next.x - sample.x);
+    return {
+      position: [side * sample.x, sample.y, sample.z],
+      size,
+      yaw: side < 0 ? Math.PI - yaw : yaw,
+    };
+  });
+}
+
+/** Highland lamps are separate curved openings. Juniper's export is a stack of
+ * fascia-deep blocks, so only a thin blade and the outer projectors are drawn. */
+const highlandSamples = [0, 1, 2, 3, 4, 5, 6].map((i) => {
+  const t = i / 6;
+  return {
+    t,
+    x: 0.46 + t * 0.36,
+    y: 0.662 - t * 0.028,
+    z: -2.205 + t * t * 0.145,
+  };
+});
+
+function juniperBar(): Chip[] {
+  const chips: Chip[] = [];
+  const count = 26;
+  for (let i = 0; i < count; i++) {
+    const t = i / (count - 1);
+    const x = THREE.MathUtils.lerp(-0.8, 0.8, t);
+    const arch = 1 - Math.abs(t - 0.5) * 2;
+    chips.push({
+      position: [x, 0.808 + arch * 0.012, -2.332],
+      size: [0.046, 0.016],
+      bar: true,
+    });
+  }
+  for (const side of [-1, 1] as const) {
+    for (let i = 0; i < 4; i++) {
+      const t = i / 3;
+      chips.push({
+        position: [side * (0.62 + t * 0.2), 0.642, -2.272 + t * 0.02],
+        size: [0.04, 0.026],
+        yaw: side * t * 0.22,
+      });
+    }
+    chips.push({
+      position: [side * 0.7, 0.628, -2.268],
+      size: [0.07, 0.04],
+      round: true,
+    });
+  }
+  return chips;
+}
+
+const RIGS: Record<string, Rig> = {
+  "model-3": {
+    noseZ: -2.36,
+    spots: [
+      [-0.62, 0.64, -2.16],
+      [0.62, 0.64, -2.16],
+    ],
+    chips: [
+      ...curvedLamp(-1, highlandSamples, [0.04, 0.015]),
+      ...curvedLamp(1, highlandSamples, [0.04, 0.015]),
+      { position: [-0.5, 0.628, -2.2], size: [0.055, 0.04], round: true },
+      { position: [0.5, 0.628, -2.2], size: [0.055, 0.04], round: true },
+    ],
+  },
+  "model-y": {
+    noseZ: -2.4,
+    spots: [
+      [-0.72, 0.64, -2.26],
+      [0.72, 0.64, -2.26],
+    ],
+    chips: juniperBar(),
+  },
+  "model-3-heritage": {
+    noseZ: -2.34,
+    spots: [
+      [-0.62, 0.64, -2.3],
+      [0.62, 0.64, -2.3],
+    ],
+    chips: [],
+  },
+  "model-s-heritage": {
+    noseZ: -2.48,
+    spots: [
+      [-0.72, 0.66, -2.42],
+      [0.72, 0.66, -2.42],
+    ],
+    chips: [],
+  },
+  cybertruck: {
+    noseZ: -2.84,
+    spots: [
+      [-0.55, 0.99, -2.86],
+      [0.55, 0.99, -2.86],
+    ],
+    chips: [],
+  },
+  cybercab: {
+    noseZ: -2.06,
+    spots: [
+      [-0.42, 0.64, -2.04],
+      [0.42, 0.64, -2.04],
+    ],
+    chips: [],
+  },
 };
 
 function usePoolMap() {
   const texture = useMemo(() => {
+    const size = 256;
     const canvas = document.createElement("canvas");
-    canvas.width = 128;
-    canvas.height = 256;
+    canvas.width = size;
+    canvas.height = size;
     const ctx = canvas.getContext("2d")!;
-    ctx.clearRect(0, 0, 128, 256);
-    const vertical = ctx.createLinearGradient(0, 0, 0, 256);
-    vertical.addColorStop(0, "rgba(255,255,255,0.95)");
-    vertical.addColorStop(0.18, "rgba(226,236,255,0.55)");
-    vertical.addColorStop(0.55, "rgba(190,210,235,0.16)");
-    vertical.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = vertical;
-    ctx.fillRect(0, 0, 128, 256);
-    const edge = ctx.createLinearGradient(0, 0, 128, 0);
-    edge.addColorStop(0, "rgba(0,0,0,1)");
-    edge.addColorStop(0.18, "rgba(0,0,0,0)");
-    edge.addColorStop(0.82, "rgba(0,0,0,0)");
-    edge.addColorStop(1, "rgba(0,0,0,1)");
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.fillStyle = edge;
-    ctx.fillRect(0, 0, 128, 256);
+    const image = ctx.createImageData(size, size);
+    for (let y = 0; y < size; y++) {
+      const v = y / (size - 1);
+      const along = Math.exp(-v * 3.1) * (1 - v);
+      for (let x = 0; x < size; x++) {
+        const u = x / (size - 1);
+        const across = Math.cos((u - 0.5) * Math.PI) ** 1.35;
+        const alpha = Math.max(0, Math.min(1, along * across));
+        const i = (y * size + x) * 4;
+        image.data[i] = 232;
+        image.data[i + 1] = 240;
+        image.data[i + 2] = 255;
+        image.data[i + 3] = Math.round(alpha * 255);
+      }
+    }
+    ctx.putImageData(image, 0, 0);
     const map = new THREE.CanvasTexture(canvas);
     map.colorSpace = THREE.NoColorSpace;
     map.flipY = false;
@@ -75,17 +169,19 @@ function usePoolMap() {
 
 function Spot({
   position,
+  noseZ,
   intensity,
 }: {
   position: [number, number, number];
+  noseZ: number;
   intensity: number;
 }) {
   const light = useRef<THREE.SpotLight>(null);
   const target = useRef<THREE.Object3D>(null);
   const aim: [number, number, number] = [
-    position[0] * 0.22,
-    0.03,
-    position[2] - 7.2,
+    position[0] * 0.2,
+    0.02,
+    noseZ - 8.5,
   ];
   useFrame(() => {
     const spot = light.current;
@@ -99,20 +195,13 @@ function Spot({
       <spotLight
         ref={light}
         position={position}
-        angle={0.42}
-        penumbra={0.72}
-        distance={18}
+        angle={0.26}
+        penumbra={1}
+        distance={12}
         decay={2}
         intensity={intensity}
-        color="#eef4ff"
+        color="#e7eef8"
         castShadow={false}
-      />
-      <pointLight
-        position={[position[0], position[1], position[2] - 0.05]}
-        intensity={intensity * 0.006}
-        distance={2.4}
-        decay={2}
-        color="#f7fbff"
       />
       <object3D ref={target} position={aim} />
     </>
@@ -120,85 +209,85 @@ function Spot({
 }
 
 function Pool({
-  origin,
+  noseZ,
   opacity,
   map,
 }: {
-  origin: [number, number, number];
+  noseZ: number;
   opacity: number;
   map: THREE.Texture;
 }) {
-  const length = 6.6;
-  const width = 1.45;
+  const geometry = useMemo(() => {
+    const length = 5.2;
+    const near = noseZ - 0.04;
+    const far = near - length;
+    const w0 = 0.42;
+    const w1 = 1.15;
+    const y = 0.006;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(
+        [-w0, y, near, w0, y, near, -w1, y, far, w1, y, far],
+        3,
+      ),
+    );
+    geo.setAttribute(
+      "uv",
+      new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2),
+    );
+    geo.setIndex([0, 2, 1, 1, 2, 3]);
+    return geo;
+  }, [noseZ]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  if (opacity <= 0) return null;
   return (
-    <mesh
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[origin[0] * 0.72, 0.02, origin[2] - length / 2]}
-      renderOrder={6}
-    >
-      <planeGeometry args={[width, length]} />
+    <mesh geometry={geometry} renderOrder={2}>
       <meshBasicMaterial
         map={map}
-        color="#e7f1ff"
+        color="#d5e2f4"
         transparent
         opacity={opacity}
         depthWrite={false}
-        toneMapped={false}
+        toneMapped
       />
     </mesh>
   );
 }
 
-function LampFace({
-  face,
-  lit,
-}: {
-  face: Face;
-  lit: boolean;
-}) {
+function ChipFace({ chip, lit }: { chip: Chip; lit: boolean }) {
   const glow = useRef<THREE.MeshStandardMaterial>(null);
-  const pulse = useStudio((s) => s.demoFeature === "lightbar" && !!face.bar);
+  const pulse = useStudio((s) => s.demoFeature === "lightbar" && !!chip.bar);
   useFrame(({ clock }) => {
     const material = glow.current;
     if (!material) return;
-    const base = lit ? (face.bar ? 6.5 : 7.5) : 0;
-    material.emissiveIntensity = pulse ? base + Math.sin(clock.elapsedTime * 3) * 1.4 : base;
+    const base = lit ? (chip.bar ? 1.35 : 1.7) : 0;
+    material.emissiveIntensity = pulse
+      ? base + Math.sin(clock.elapsedTime * 3) * 0.45
+      : base;
   });
+  if (!lit) return null;
+  const yaw = (chip.yaw ?? 0) + Math.PI;
   return (
-    <group position={face.position} rotation={[0, Math.PI, 0]}>
-      <mesh position={[0, 0, -0.012]}>
-        <planeGeometry args={[face.size[0] + 0.04, face.size[1] + 0.028]} />
-        <meshStandardMaterial color="#0c1014" roughness={0.46} metalness={0.35} />
-      </mesh>
-      <mesh position={[0, 0, 0.004]}>
-        <planeGeometry args={face.size} />
-        <meshStandardMaterial
-          ref={glow}
-          color={lit ? "#f4f8ff" : "#6d7c8c"}
-          emissive={face.bar ? "#f7fbff" : "#eef5ff"}
-          emissiveIntensity={lit ? 7 : 0}
-          roughness={0.28}
-          metalness={0.04}
-          toneMapped={false}
-        />
-      </mesh>
-      <mesh position={[0, 0, 0.012]}>
-        <planeGeometry args={[face.size[0] + 0.012, face.size[1] + 0.01]} />
-        <meshPhysicalMaterial
-          color={lit ? "#d5e4f4" : "#24303a"}
-          emissive={lit ? "#c9ddf2" : "#000000"}
-          emissiveIntensity={lit ? 0.85 : 0}
-          transparent
-          opacity={lit ? 0.42 : 0.55}
-          roughness={0.04}
-          metalness={0}
-          clearcoat={1}
-          clearcoatRoughness={0.04}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-    </group>
+    <mesh position={chip.position} rotation={[0, yaw, 0]}>
+      {chip.round ? (
+        <circleGeometry args={[chip.size[0] * 0.5, 18]} />
+      ) : (
+        <planeGeometry args={chip.size} />
+      )}
+      <meshStandardMaterial
+        ref={glow}
+        color="#f7fbff"
+        emissive="#f4f8ff"
+        emissiveIntensity={lit ? 1.55 : 0}
+        roughness={0.42}
+        metalness={0}
+        toneMapped
+        polygonOffset
+        polygonOffsetFactor={-2}
+        polygonOffsetUnits={-2}
+      />
+    </mesh>
   );
 }
 
@@ -207,33 +296,25 @@ export function LampBeams({ model, on }: { model: string; on: boolean }) {
   const lightBar = useStudio((s) => s.lightBarOn);
   const backdrop = backdropById(environment);
   const pool = usePoolMap();
-  const faces = FACES[model] ?? FACES["model-3"];
-  const projectors = faces.filter((face) => !face.bar);
-  const beams = projectors.length ? projectors : faces;
+  const rig = RIGS[model] ?? RIGS["model-3"];
   return (
     <group>
-      {faces.map((face, index) => (
-        <LampFace
-          key={`${face.position.join(",")}-${index}`}
-          face={face}
-          lit={face.bar ? on && lightBar : on}
+      {rig.chips.map((chip, index) => (
+        <ChipFace
+          key={`${chip.position.join(",")}-${index}`}
+          chip={chip}
+          lit={chip.bar ? on && lightBar : on}
         />
       ))}
-      {beams.map((face, index) => (
+      {rig.spots.map((position, index) => (
         <Spot
           key={`spot-${index}`}
-          position={[face.position[0], face.position[1], face.position[2] - 0.02]}
+          position={position}
+          noseZ={rig.noseZ}
           intensity={on ? backdrop.beam : 0}
         />
       ))}
-      {beams.map((face, index) => (
-        <Pool
-          key={`pool-${index}`}
-          origin={face.position}
-          opacity={on ? backdrop.pool : 0}
-          map={pool}
-        />
-      ))}
+      <Pool noseZ={rig.noseZ} opacity={on ? backdrop.pool : 0} map={pool} />
     </group>
   );
 }

@@ -40,9 +40,9 @@ function inferRole(materialName: string, objectName: string) {
   return materialName || "satin_trim";
 }
 
-/** Juniper's front lamps were exported as fascia-sized emissive blocks.
- * Those read as glowing walls. Keep them as dark housings; the studio draws
- * a separate lamp face, beam and pool on the nose. */
+/** Juniper's front lamps were exported as fascia-deep blocks. Lighting the
+ * whole volume reads as a glowing wall, so those meshes stay dark housings.
+ * A thin segmented blade is drawn on the front face instead. */
 function refineImportedRole(
   role: string,
   center: THREE.Vector3,
