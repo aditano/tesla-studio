@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { VEHICLES, vehicleById, featuresForVehicle } from "./catalog";
+import { BACKDROPS } from "./scene/backdrops";
 import { useStudio } from "./store";
 const VehicleCanvas = lazy(() =>
   import("./scene/VehicleCanvas").then((m) => ({ default: m.VehicleCanvas })),
@@ -540,17 +541,26 @@ export function Studio() {
                 <option value="high">High quality</option>
               </select>
             </div>
-            <div className="segmented">
-              {(["studio", "daylight", "midnight"] as const).map((mode) => (
+            <div className="backdrop-chips" role="group" aria-label="Background">
+              {BACKDROPS.map((backdrop) => (
                 <button
-                  key={mode}
-                  className={s.environment === mode ? "selected" : ""}
-                  aria-pressed={s.environment === mode}
-                  onClick={() => s.setEnvironment(mode)}
+                  key={backdrop.id}
+                  className={s.environment === backdrop.id ? "selected" : ""}
+                  aria-pressed={s.environment === backdrop.id}
+                  onClick={() => s.setEnvironment(backdrop.id)}
                 >
-                  {mode}
+                  {backdrop.label}
                 </button>
               ))}
+            </div>
+            <div className="lamp-toggle">
+              <button
+                className={s.lightsOn ? "selected" : ""}
+                aria-pressed={s.lightsOn}
+                onClick={() => s.setLightsOn(!s.lightsOn)}
+              >
+                Headlights {s.lightsOn ? "on" : "off"}
+              </button>
             </div>
           </div>
         </div>

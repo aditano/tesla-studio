@@ -7,14 +7,15 @@ import {
   type ModelId,
   type PartId,
 } from "./catalog";
+import type { BackdropId } from "./scene/backdrops";
 
 type StudioState = {
-  environment: "studio" | "daylight" | "midnight";
+  environment: BackdropId;
   quality: "auto" | "high";
   cameraRevision: number;
   demoFeature: FeatureId | null;
   setDemoFeature: (id: FeatureId | null) => void;
-  setEnvironment: (id: "studio" | "daylight" | "midnight") => void;
+  setEnvironment: (id: BackdropId) => void;
   setQuality: (id: "auto" | "high") => void;
   modelId: ModelId;
   variantId: string;

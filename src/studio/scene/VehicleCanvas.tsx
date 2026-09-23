@@ -19,6 +19,8 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { useStudio } from "../store";
 import { ActiveVehicle } from "../vehicles/ActiveVehicle";
+import { backdropById, type Backdrop } from "./backdrops";
+import { BackdropScenery } from "./scenery";
 
 import { shotFor } from "./shots";
 
@@ -102,49 +104,160 @@ function CinematicControls() {
   );
 }
 
-function atmosphere(mode: string) {
-  const day = mode === "daylight",
-    night = mode === "midnight";
-  return {
-    day,
-    night,
-    bg: day ? "#7d858d" : night ? "#05070a" : "#10141a",
-    floor: day ? "#6a7178" : night ? "#1b2026" : "#2c333b",
-    fogNear: day ? 22 : night ? 16 : 18,
-    fogFar: day ? 70 : night ? 52 : 58,
-  };
+function useBackdrop() {
+  const mode = useStudio((s) => s.environment);
+  return backdropById(mode);
 }
 
 function ToneMap() {
-  const mode = useStudio((s) => s.environment);
+  const backdrop = useBackdrop();
   const gl = useThree((s) => s.gl);
-  const exposure =
-    mode === "daylight" ? 0.96 : mode === "midnight" ? 0.78 : 0.8;
   useEffect(() => {
     gl.toneMapping = THREE.ACESFilmicToneMapping;
-    gl.toneMappingExposure = exposure;
+    gl.toneMappingExposure = backdrop.exposure;
     gl.shadowMap.enabled = true;
     gl.shadowMap.type = THREE.PCFSoftShadowMap;
-  }, [gl, exposure]);
+  }, [gl, backdrop.exposure]);
   return null;
 }
 
-function Lighting({ high }: { high: boolean }) {
-  const mode = useStudio((s) => s.environment);
-  const { day, night, bg, fogNear, fogFar } = atmosphere(mode);
+function StudioEnvironment({
+  backdrop,
+}: {
+  backdrop: Backdrop;
+}) {
+  const { day, night } = backdrop;
   return (
     <>
-      <color attach="background" args={[bg]} />
-      <fog attach="fog" args={[bg, fogNear, fogFar]} />
+      <Lightformer
+        form="rect"
+        intensity={day ? 1.7 : night ? 0.85 : 0.55}
+        position={[0, 9.2, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+        scale={day ? [28, 20, 1] : [22, 16, 1]}
+        color="#ffffff"
+      />
+      <Lightformer
+        form="rect"
+        intensity={day ? 0.85 : night ? 1.2 : 0.55}
+        position={[0, 8.6, -0.4]}
+        rotation={[Math.PI / 2, 0, 0]}
+        scale={[20, day ? 2.4 : 0.7, 1]}
+        color="#ffffff"
+      />
+      <Lightformer
+        form="rect"
+        intensity={day ? 0.7 : night ? 1.1 : 0.7}
+        position={[0, 8.5, 1.6]}
+        rotation={[Math.PI / 2, 0, 0]}
+        scale={[16, day ? 1.6 : 0.45, 1]}
+        color="#f4f7fb"
+      />
+      <Lightformer
+        form="rect"
+        intensity={day ? 1.05 : night ? 1.4 : 0.85}
+        position={[-8.2, 3.4, 0]}
+        rotation={[0, Math.PI / 2, 0]}
+        scale={[16, day ? 6 : 4.2, 1]}
+        color={night ? "#8aa3c2" : "#eef3ff"}
+      />
+      <Lightformer
+        form="rect"
+        intensity={day ? 0.95 : night ? 1.15 : 0.7}
+        position={[8.2, 3.1, 0.4]}
+        rotation={[0, -Math.PI / 2, 0]}
+        scale={[15, day ? 5.4 : 3.6, 1]}
+        color={night ? "#c4b0a4" : "#fff6ec"}
+      />
+      <Lightformer
+        form="rect"
+        intensity={day ? 1.55 : night ? 0.85 : 0.75}
+        position={[0, 3.6, 10.5]}
+        rotation={[0, Math.PI, 0]}
+        scale={[14, 5, 1]}
+        color="#ffffff"
+      />
+      <Lightformer
+        form="rect"
+        intensity={day ? 1.25 : night ? 1.05 : 0.65}
+        position={[0, 3.2, -10.8]}
+        scale={[12, 4.6, 1]}
+        color="#ffffff"
+      />
+      {!day && (
+        <Lightformer
+          form="ring"
+          intensity={night ? 0.85 : 0.55}
+          position={[0, 6.4, -0.6]}
+          rotation={[Math.PI / 2, 0, 0]}
+          scale={8}
+          color="#ffffff"
+        />
+      )}
+      <Lightformer
+        form="rect"
+        intensity={day ? 0.55 : night ? 0.14 : 0.28}
+        position={[0, -0.4, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        scale={[18, 18, 1]}
+        color={day ? "#c5cad0" : "#6e747c"}
+      />
+    </>
+  );
+}
+
+function OutdoorEnvironment({ backdrop }: { backdrop: Backdrop }) {
+  return (
+    <>
+      <Lightformer
+        form="rect"
+        intensity={backdrop.day ? 2.2 : 0.7}
+        position={[0, 10, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+        scale={[30, 22, 1]}
+        color={backdrop.hemiSky}
+      />
+      <Lightformer
+        form="rect"
+        intensity={1.6}
+        position={backdrop.keyPosition}
+        scale={[10, 5, 1]}
+        color={backdrop.keyColor}
+      />
+      <Lightformer
+        form="rect"
+        intensity={0.55}
+        position={backdrop.fillPosition}
+        scale={[8, 4, 1]}
+        color={backdrop.fillColor}
+      />
+      <Lightformer
+        form="rect"
+        intensity={0.35}
+        position={[0, -0.6, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        scale={[22, 22, 1]}
+        color={backdrop.floor}
+      />
+    </>
+  );
+}
+
+function Lighting({ high }: { high: boolean }) {
+  const backdrop = useBackdrop();
+  return (
+    <>
+      <color attach="background" args={[backdrop.background]} />
+      <fog attach="fog" args={[backdrop.fog, backdrop.fogNear, backdrop.fogFar]} />
       <hemisphereLight
-        intensity={day ? 0.6 : night ? 0.18 : 0.34}
-        color={day ? "#f3f6fa" : night ? "#9aadc4" : "#e6eef6"}
-        groundColor={day ? "#6a7076" : night ? "#0a0c10" : "#2a2e33"}
+        intensity={backdrop.hemiIntensity}
+        color={backdrop.hemiSky}
+        groundColor={backdrop.hemiGround}
       />
       <directionalLight
-        position={[5.2, 6.4, -5.4]}
-        intensity={day ? 1.8 : night ? 0.35 : 5.5}
-        color={day ? "#fff4e4" : night ? "#c5d2e6" : "#f5f7fb"}
+        position={backdrop.keyPosition}
+        intensity={backdrop.keyIntensity}
+        color={backdrop.keyColor}
         castShadow
         shadow-mapSize={[high ? 2048 : 1024, high ? 2048 : 1024]}
         shadow-bias={-0.00018}
@@ -158,91 +271,30 @@ function Lighting({ high }: { high: boolean }) {
         shadow-camera-bottom={-8.5}
       />
       <directionalLight
-        position={[5.6, 5.2, 2.8]}
-        intensity={day ? 0.3 : night ? 0.1 : 0.22}
-        color={night ? "#8aa0c4" : "#fff6ec"}
+        position={backdrop.fillPosition}
+        intensity={backdrop.fillIntensity}
+        color={backdrop.fillColor}
       />
-      <Environment resolution={high ? 1024 : 256} frames={1} key={mode}>
-        <Lightformer
-          form="rect"
-          intensity={day ? 1.7 : night ? 0.85 : 0.55}
-          position={[0, 9.2, 0]}
-          rotation={[Math.PI / 2, 0, 0]}
-          scale={day ? [28, 20, 1] : [22, 16, 1]}
-          color="#ffffff"
-        />
-        <Lightformer
-          form="rect"
-          intensity={day ? 0.85 : night ? 1.2 : 0.55}
-          position={[0, 8.6, -0.4]}
-          rotation={[Math.PI / 2, 0, 0]}
-          scale={[20, day ? 2.4 : 0.7, 1]}
-          color="#ffffff"
-        />
-        <Lightformer
-          form="rect"
-          intensity={day ? 0.7 : night ? 1.1 : 0.7}
-          position={[0, 8.5, 1.6]}
-          rotation={[Math.PI / 2, 0, 0]}
-          scale={[16, day ? 1.6 : 0.45, 1]}
-          color="#f4f7fb"
-        />
-        <Lightformer
-          form="rect"
-          intensity={day ? 1.05 : night ? 1.4 : 0.85}
-          position={[-8.2, 3.4, 0]}
-          rotation={[0, Math.PI / 2, 0]}
-          scale={[16, day ? 6 : 4.2, 1]}
-          color={night ? "#8aa3c2" : "#eef3ff"}
-        />
-        <Lightformer
-          form="rect"
-          intensity={day ? 0.95 : night ? 1.15 : 0.7}
-          position={[8.2, 3.1, 0.4]}
-          rotation={[0, -Math.PI / 2, 0]}
-          scale={[15, day ? 5.4 : 3.6, 1]}
-          color={night ? "#c4b0a4" : "#fff6ec"}
-        />
-        <Lightformer
-          form="rect"
-          intensity={day ? 1.55 : night ? 0.85 : 0.75}
-          position={[0, 3.6, 10.5]}
-          rotation={[0, Math.PI, 0]}
-          scale={[14, 5, 1]}
-          color="#ffffff"
-        />
-        <Lightformer
-          form="rect"
-          intensity={day ? 1.25 : night ? 1.05 : 0.65}
-          position={[0, 3.2, -10.8]}
-          scale={[12, 4.6, 1]}
-          color="#ffffff"
-        />
-        {!day && (
-          <Lightformer
-            form="ring"
-            intensity={night ? 0.85 : 0.55}
-            position={[0, 6.4, -0.6]}
-            rotation={[Math.PI / 2, 0, 0]}
-            scale={8}
-            color="#ffffff"
-          />
+      <Environment
+        resolution={high ? (backdrop.mirror ? 1024 : 512) : 256}
+        frames={1}
+        key={backdrop.id}
+      >
+        {backdrop.mirror ? (
+          <StudioEnvironment backdrop={backdrop} />
+        ) : (
+          <OutdoorEnvironment backdrop={backdrop} />
         )}
-        <Lightformer
-          form="rect"
-          intensity={day ? 0.55 : night ? 0.14 : 0.28}
-          position={[0, -0.4, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
-          scale={[18, 18, 1]}
-          color={day ? "#c5cad0" : "#6e747c"}
-        />
       </Environment>
+      {backdrop.scenery !== "none" && <BackdropScenery backdrop={backdrop} />}
     </>
   );
 }
 function Floor({ high }: { high: boolean }) {
-  const mode = useStudio((s) => s.environment);
-  const { day, night, bg, floor } = atmosphere(mode);
+  const backdrop = useBackdrop();
+  const { day, night } = backdrop;
+  const bg = backdrop.fog;
+  const floor = backdrop.floor;
   const fadeMap = useMemo(() => {
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 512;
@@ -304,43 +356,60 @@ function Floor({ high }: { high: boolean }) {
         <circleGeometry args={[2000, 64]} />
         <meshBasicMaterial color={bg} />
       </mesh>
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow
-        position={[0, -0.015, 0]}
-      >
-        <circleGeometry args={[32, 64]} />
-        <MeshReflectorMaterial
-          resolution={high ? 1024 : 512}
-          blur={[280, 90]}
-          mixBlur={0.82}
-          mixStrength={night ? 0.55 : day ? 1.7 : 1.45}
-          mixContrast={0.9}
-          roughness={night ? 0.86 : day ? 0.78 : 0.82}
-          metalness={night ? 0.08 : day ? 0.1 : 0.12}
-          color={floor}
-          mirror={night ? 0.03 : day ? 0.06 : 0.05}
-          depthScale={0.38}
-          minDepthThreshold={0.35}
-          maxDepthThreshold={1.5}
-        />
-      </mesh>
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, -0.012, 0]}
-        receiveShadow
-      >
-        <circleGeometry args={[28, 64]} />
-        <meshStandardMaterial
-          map={floorMap}
-          color="#d8dee6"
-          roughness={0.92}
-          metalness={0.04}
-          transparent
-          opacity={night ? 0.42 : day ? 0.7 : 0.62}
-          depthWrite={false}
-        />
-      </mesh>
+      {backdrop.mirror ? (
+        <>
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            receiveShadow
+            position={[0, -0.015, 0]}
+          >
+            <circleGeometry args={[32, 64]} />
+            <MeshReflectorMaterial
+              resolution={high ? 1024 : 512}
+              blur={[280, 90]}
+              mixBlur={0.82}
+              mixStrength={night ? 0.55 : day ? 1.7 : 1.45}
+              mixContrast={0.9}
+              roughness={night ? 0.86 : day ? 0.78 : 0.82}
+              metalness={night ? 0.08 : day ? 0.1 : 0.12}
+              color={floor}
+              mirror={night ? 0.03 : day ? 0.06 : 0.05}
+              depthScale={0.38}
+              minDepthThreshold={0.35}
+              maxDepthThreshold={1.5}
+            />
+          </mesh>
+          <mesh
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, -0.012, 0]}
+            receiveShadow
+          >
+            <circleGeometry args={[28, 64]} />
+            <meshStandardMaterial
+              map={floorMap}
+              color="#d8dee6"
+              roughness={0.92}
+              metalness={0.04}
+              transparent
+              opacity={night ? 0.42 : day ? 0.7 : 0.62}
+              depthWrite={false}
+            />
+          </mesh>
+        </>
+      ) : (
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          receiveShadow
+          position={[0, -0.012, 0]}
+        >
+          <circleGeometry args={[48, 64]} />
+          <meshStandardMaterial
+            color={floor}
+            roughness={0.94}
+            metalness={0.02}
+          />
+        </mesh>
+      )}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.011, 0]}>
         <circleGeometry args={[32, 64]} />
         <meshBasicMaterial
@@ -387,27 +456,21 @@ function ContextGuard() {
   return null;
 }
 function PostFX({ high }: { high: boolean }) {
-  const mode = useStudio((s) => s.environment);
+  const backdrop = useBackdrop();
   if (!high) return null;
-  const day = mode === "daylight",
-    night = mode === "midnight";
   return (
     <EffectComposer multisampling={0} enableNormalPass={false}>
-      <N8AO
-        aoRadius={0.24}
-        intensity={night ? 0.78 : day ? 0.48 : 0.58}
-        halfRes
-      />
+      <N8AO aoRadius={0.24} intensity={backdrop.ao} halfRes />
       <Bloom
-        luminanceThreshold={night ? 0.55 : 0.78}
+        luminanceThreshold={backdrop.bloomThreshold}
         luminanceSmoothing={0.22}
-        intensity={night ? 0.4 : day ? 0.18 : 0.22}
+        intensity={backdrop.bloomIntensity}
         mipmapBlur
       />
       <Vignette
         eskil={false}
-        offset={night ? 0.34 : day ? 0.48 : 0.4}
-        darkness={night ? 0.34 : day ? 0.14 : 0.24}
+        offset={backdrop.vignetteOffset}
+        darkness={backdrop.vignetteDarkness}
       />
     </EffectComposer>
   );

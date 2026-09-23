@@ -8,6 +8,20 @@ import { useStudio } from "../src/studio/store";
 import { SHOTS, shotFor } from "../src/studio/scene/shots";
 import { coachwork } from "../src/studio/vehicles/coachwork";
 import { prepareHeritage, pivots, heritageOpenAngles } from "../src/studio/vehicles/HeritageVehicle";
+import { BACKDROPS } from "../src/studio/scene/backdrops";
+{
+  const ids = BACKDROPS.map((backdrop) => backdrop.id);
+  assert.equal(new Set(ids).size, ids.length, "backdrop ids must be unique");
+  for (const id of ["studio", "mars", "forest", "night-city", "desert"] as const) {
+    assert.ok(ids.includes(id), `missing backdrop ${id}`);
+  }
+  assert.equal(useStudio.getState().environment, "studio");
+  useStudio.getState().setEnvironment("mars");
+  assert.equal(useStudio.getState().environment, "mars");
+  useStudio.getState().setEnvironment("forest");
+  assert.equal(useStudio.getState().environment, "forest");
+  useStudio.getState().setEnvironment("studio");
+}
 for (const vehicle of VEHICLES) {
   useStudio.getState().setModel(vehicle.id);
   for (const variant of vehicle.variants) {
