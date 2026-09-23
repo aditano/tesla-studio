@@ -662,7 +662,13 @@ function cybertruck(root) {
     for (const z of [-1.05, 1.3]) sphere(body, 'side_camera', [.012, .018, .023], [s * (w + .005), 1.16, z], lens);
   }
   quad(body, 'front_face', [[-w, .70, -half], [w, .70, -half], [w, .96, -half], [-w, .96, -half]], steel);
-  quad(hood, 'hood_panel', [[-w, .964, -half], [w, .964, -half], [w, 1.22, -1.2], [-w, 1.22, -1.2]], steel);
+  patch(hood, 'hood_panel', (u, v) => {
+    const z = lerp(-half + .004, -1.2, v),
+      inset = .015 + .05 * v,
+      x = (u - .5) * 2 * (w - inset),
+      side = Math.abs(u - .5) * 2;
+    return V(x, lerp(.97, 1.22, v) - side * side * .045 + (1 - side * side) * .01, z);
+  }, 18, 12, steel, 0);
   patch(body, 'windshield', (u, v) => {
     const z = lerp(-1.19, -.125, v);
     return V((u - .5) * 2 * lerp(w - .035, .775, v), roofY(z) + .002, z);
@@ -708,18 +714,19 @@ function cybertruck(root) {
   box(body, 'charge_inlet', [.025, .085, .1], [-w + .014, 1.06, 2.44], trim, .007);
   box(body, 'undertray', [1.76, .05, 5.05], [0, .22, .15], trim, .008);
   box(body, 'front_bulkhead', [1.72, .72, .04], [0, .72, -half + .28], trim, .008);
+  quad(body, 'roof_skin', [[-.72, 1.74, -.02], [.72, 1.74, -.02], [.8, 1.32, .88], [-.8, 1.32, .88]], steel);
   for (const s of [-1, 1]) {
     box(body, 'rocker', [.1, .1, 3.2], [s * (w - .015), .32, .08], trim, .012);
-    quad(body, 'nose_return', [[s * w, .5, -half + .02], [s * w, .98, -half + .02], [s * (w - .02), belt(-half + .22), -half + .22], [s * (w - .02), lower(-half + .22), -half + .22]], steel);
+    patch(body, 'inner_side', (u, v) => {
+      const z = lerp(-half + .12, half - .08, u);
+      return V(s * (w - .055), lerp(.3, Math.min(belt(z) - .02, 1.16), v), z);
+    }, 40, 8, steel, 0);
     for (const axle of [front, rear]) {
-      const steps = [[-.82, .08], [-.48, .58], [-.06, .98], [.4, .72], [.78, .12]];
-      for (let i = 0; i < steps.length - 1; i++) {
-        const [z0, y0] = steps[i],
-          [z1, y1] = steps[i + 1],
-          xIn = s * (w - .02),
-          xOut = s * (w + .05);
-        quad(body, 'wheel_flare', [[xIn, y0, axle + z0 * r], [xOut, y0, axle + z0 * r], [xOut, y1, axle + z1 * r], [xIn, y1, axle + z1 * r]], trim);
-      }
+      const arch = new T.TorusGeometry(r + .08, .042, 8, 28, Math.PI);
+      arch.rotateY(Math.PI / 2);
+      arch.translate(s * (w - .01), r, axle);
+      mesh(body, 'wheel_arch', arch, trim);
+      box(body, 'arch_close', [.06, .55, r * 1.7], [s * .62, .72, axle], seal, .01);
     }
   }
   cabin(body, {
