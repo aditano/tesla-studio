@@ -40,21 +40,18 @@ function inferRole(materialName: string, objectName: string) {
   return materialName || "satin_trim";
 }
 
-/** Juniper front lighting was exported as a few oversized emissive slabs.
- * Keep the thin upper blade as the signature bar, compact lower emitters
- * as headlights, and the bulky housings as lenses. */
+/** Juniper's front lamps were exported as fascia-sized emissive blocks.
+ * Those read as glowing walls. Keep them as dark housings; the studio draws
+ * a separate lamp face, beam and pool on the nose. */
 function refineImportedRole(
   role: string,
   center: THREE.Vector3,
   size: THREE.Vector3,
 ) {
-  if (role === "signature_led" && center.z < -1.55) {
-    if (size.y > 0.12) return "lamp_lens";
-    if (center.y < 0.72 && size.y <= 0.085 && size.z <= 0.28)
-      return "headlight_led";
-    if (center.y < 0.72 && size.z > 0.32) return "lamp_lens";
-    return "signature_led";
-  }
+  if (role === "signature_led" && center.z < -1.4 && size.x > 0.8)
+    return "lamp_housing";
+  if (role === "taillight_led" && size.z > 0.35 && size.y > 0.12)
+    return "lamp_housing";
   return role;
 }
 
@@ -122,6 +119,16 @@ function treatImported(material: THREE.MeshPhysicalMaterial, role: string) {
     material.sheenRoughness = 0.36;
     material.sheenColor.set("#c8c4bc");
     material.envMapIntensity = 0.7;
+  }
+  if (role === "lamp_housing") {
+    material.transparent = false;
+    material.opacity = 1;
+    material.color.set("#12161b");
+    material.emissive.set("#000000");
+    material.emissiveIntensity = 0;
+    material.metalness = 0.32;
+    material.roughness = 0.42;
+    material.envMapIntensity = 0.55;
   }
   if (role === "headlight_led" || role === "signature_led") {
     material.transparent = false;

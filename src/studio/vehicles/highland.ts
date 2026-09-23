@@ -26,8 +26,11 @@ function highlandRole(name: string, x: number, y: number, z: number) {
     y < 1.03
   )
     role = "interior_leather";
-  if (/window|extwindow|Geodoorl2sub31|Geodoorr2sub31/i.test(name))
-    role = "glass";
+  if (/window|extwindow|Geodoorl2sub31|Geodoorr2sub31/i.test(name)) {
+    // The front lamp cover shares the door-glass material. Treat only the
+    // nose as a lens so the windshield stays cabin glass.
+    role = z < -1.7 && y > 0.5 && y < 0.82 ? "lamp_lens" : "glass";
+  }
   if (name === "Ln12Mtl") role = "taillight_led";
   if (/Tire1/.test(name)) role = "tire_rubber";
   return role;
@@ -60,17 +63,18 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
     material.sheenColor.set("#c8c4bc");
     material.envMapIntensity = 0.6;
   }
-  if (role === "glass" || material.transparent) {
+  if (role === "glass" || role === "lamp_lens" || material.transparent) {
     material.transparent = true;
-    material.roughness = 0.07;
+    material.roughness = role === "lamp_lens" ? 0.04 : 0.07;
     material.metalness = 0.04;
-    material.opacity = 0.34;
+    material.opacity = role === "lamp_lens" ? 0.38 : 0.34;
     material.transmission = 0;
     material.thickness = 0;
     material.clearcoat = 1;
     material.clearcoatRoughness = 0.04;
     material.depthWrite = false;
-    material.envMapIntensity = 1.3;
+    material.envMapIntensity = role === "lamp_lens" ? 1.6 : 1.3;
+    material.color.set(role === "lamp_lens" ? "#c5d4e2" : material.color);
   }
   if (name === "Geohoodsub00031Mtl") {
     material.metalness = 0.92;

@@ -11,7 +11,7 @@ An independent, noncommercial browser vehicle studio with configurable finishes,
 - Juniper uses BloxBloger's Sketchfab 2025 Model Y (CC BY-NC, 307k triangles). Juniper keeps a static body. Cybertruck and Cybercab still use original authored studies with articulated panels; higher-fidelity CC BY production meshes exist on Sketchfab but require a login to download. See [asset sourcing](docs/asset-sourcing.md).
 - Model and trim selection, exterior colors, interior finishes, and trim-specific sport hardware.
 - Guided tours with eased camera moves followed by articulated demonstrations. Individual features can be selected, revisited, or exited.
-- Studio, daylight and midnight lighting with generated reflection environments, clearcoat materials, contact shadows, floor reflections and restrained postprocessing.
+- Background switcher for the original studio, daylight and midnight stages plus Mars, a forest backroad, a night city and a desert highway. Outdoor scenes share one procedural sky, ground and light rig. Reflection maps are generated in Three.js at a web-sized resolution. No remote HDRIs.
 - Touch orbit and pinch zoom, collapsible mobile controls, adaptive rendering quality, loading/error states, keyboard-accessible controls and a help/credits dialog.
 
 ## Controls

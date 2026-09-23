@@ -241,38 +241,50 @@ function wheel(root, id, x, z, r, truck = false, cab = false) {
   const standard = group(w, 'wheel_standard'),
     sport = group(w, 'wheel_sport');
   if (cab) {
-    const g = new T.CylinderGeometry(rr * 1.01, rr * 1.01, .038, 72);
+    const g = new T.CylinderGeometry(rr * 1.01, rr * 1.01, .028, 72);
     g.rotateZ(Math.PI / 2);
-    g.translate(face, 0, 0);
+    g.translate(face - side * .004, 0, 0);
     mesh(standard, 'aero_disc', g, rimMat);
+    const inset = new T.CylinderGeometry(rr * .7, rr * .7, .01, 48);
+    inset.rotateZ(Math.PI / 2);
+    inset.translate(face + side * .006, 0, 0);
+    mesh(standard, 'aero_inset', inset, trim);
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2;
+      const blade = new T.BoxGeometry(.012, .008, rr * .46);
+      blade.translate(0, 0, rr * .4);
+      blade.rotateX(a);
+      blade.translate(face + side * .012, 0, 0);
+      mesh(standard, 'aero_blade', blade, metal);
+    }
     const lip = new T.TorusGeometry(rr * .98, .007, 8, 64);
     lip.rotateY(Math.PI / 2);
     lip.translate(face + side * .01, 0, 0);
     mesh(standard, 'aero_lip', lip, metal);
-    const cap = new T.CylinderGeometry(rr * .22, rr * .22, .01, 32);
+    const cap = new T.CylinderGeometry(rr * .16, rr * .16, .01, 32);
     cap.rotateZ(Math.PI / 2);
-    cap.translate(face + side * .02, 0, 0);
-    mesh(standard, 'aero_cap', cap, paint);
+    cap.translate(face + side * .018, 0, 0);
+    mesh(standard, 'aero_cap', cap, metal);
   } else if (truck) {
-    const cover = new T.CylinderGeometry(rr * .99, rr * .99, .024, 12);
+    const cover = new T.CylinderGeometry(rr * .98, rr * .98, .02, 64);
     cover.rotateZ(Math.PI / 2);
-    cover.translate(face - side * .002, 0, 0);
+    cover.translate(face - side * .004, 0, 0);
     mesh(standard, 'cyber_cover', cover, trim);
-    for (let i = 0; i < 6; i++) {
-      const a = i / 6 * Math.PI * 2 + Math.PI / 6;
-      const hole = new T.CylinderGeometry(rr * .155, rr * .155, .04, 6);
-      hole.rotateZ(Math.PI / 2);
-      hole.translate(face + side * .006, Math.sin(a) * rr * .46, Math.cos(a) * rr * .46);
-      mesh(standard, 'cyber_hex_void', hole, seal);
-      const spoke = new T.CylinderGeometry(rr * .04, rr * .055, rr * .42, 6);
-      spoke.rotateX(Math.PI / 2);
-      spoke.rotateY(a);
-      spoke.translate(face + side * .01, Math.sin(a) * rr * .22, Math.cos(a) * rr * .22);
-      mesh(standard, 'cyber_spoke', spoke, rimMat);
+    const ring = new T.TorusGeometry(rr * .9, .012, 8, 48);
+    ring.rotateY(Math.PI / 2);
+    ring.translate(face + side * .006, 0, 0);
+    mesh(standard, 'cyber_ring', ring, rimMat);
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * Math.PI * 2;
+      const blade = new T.BoxGeometry(.016, .014, rr * .7);
+      blade.translate(0, 0, rr * .32);
+      blade.rotateX(a);
+      blade.translate(face + side * .012, 0, 0);
+      mesh(standard, 'cyber_blade', blade, rimMat);
     }
-    const hex = new T.CylinderGeometry(.05, .05, .024, 6);
+    const hex = new T.CylinderGeometry(.048, .048, .016, 6);
     hex.rotateZ(Math.PI / 2);
-    hex.translate(face + side * .014, 0, 0);
+    hex.translate(face + side * .016, 0, 0);
     mesh(standard, 'cyber_hub', hex, metal);
   } else for (let i = 0; i < 5; i++) {
     const a = i / 5 * Math.PI * 2;
@@ -612,10 +624,11 @@ function cybertruck(root) {
   const roofY = z => z < -.12 ? lerp(1.22, 1.794, (z + 1.2) / 1.08) : lerp(1.794, 1.25, (z + .12) / (half + .12));
   const belt = z => z < -1.2 ? lerp(.96, 1.22, (z + half) / (half - 1.2)) : 1.22;
   const lower = z => {
-    let y = .43;
+    let y = .36;
     for (const a of [front, rear]) {
       const d = Math.abs(z - a);
-      if (d < .57) y = Math.max(y, d < .36 ? .96 : lerp(.96, .43, (d - .36) / .21));
+      const reach = .66;
+      if (d < reach) y = Math.max(y, .3 + Math.sqrt(reach * reach - d * d) * .95);
     }
     return y;
   };
@@ -627,7 +640,7 @@ function cybertruck(root) {
     for (const [a, b, parent] of [[-half, -1.14, body], [-1.14, .11, df], [.11, 1.11, dr], [1.11, half, body]]) patch(parent, 'stainless_door_plane', (u, v) => {
       const z = lerp(a + .002, b - .002, u);
       return V(s * w, lerp(lower(z), belt(z), v), z);
-    }, Math.ceil((b - a) * 36), 2, steel, .006);
+    }, Math.ceil((b - a) * 28), 8, steel, .004);
     for (const [a, b, parent] of [[-1.135, .098, df], [.12, 1.103, dr]]) {
       patch(parent, 'side_glass', (u, v) => {
         const z = lerp(a, b, u),
@@ -649,7 +662,13 @@ function cybertruck(root) {
     for (const z of [-1.05, 1.3]) sphere(body, 'side_camera', [.012, .018, .023], [s * (w + .005), 1.16, z], lens);
   }
   quad(body, 'front_face', [[-w, .70, -half], [w, .70, -half], [w, .96, -half], [-w, .96, -half]], steel);
-  quad(hood, 'hood_panel', [[-w, .964, -half], [w, .964, -half], [w, 1.22, -1.2], [-w, 1.22, -1.2]], steel);
+  patch(hood, 'hood_panel', (u, v) => {
+    const z = lerp(-half + .004, -1.2, v),
+      inset = .015 + .05 * v,
+      x = (u - .5) * 2 * (w - inset),
+      side = Math.abs(u - .5) * 2;
+    return V(x, lerp(.97, 1.22, v) - side * side * .045 + (1 - side * side) * .01, z);
+  }, 18, 12, steel, 0);
   patch(body, 'windshield', (u, v) => {
     const z = lerp(-1.19, -.125, v);
     return V((u - .5) * 2 * lerp(w - .035, .775, v), roofY(z) + .002, z);
@@ -658,11 +677,12 @@ function cybertruck(root) {
   quad(body, 'rear_cab_glass', [[-.85, roofY(.92), .92], [.85, roofY(.92), .92], [.92, 1.21, 1.1], [-.92, 1.21, 1.1]], glass);
   box(body, 'front_crash_trim', [2.08, .32, .13], [0, .50, -half + .02], trim, .01);
   box(body, 'front_skid', [1.82, .05, .20], [0, .32, -half + .08], trim, .008);
-  box(body, 'drl_channel', [2.06, .046, .028], [0, .978, -half - .006], seal, .004);
-  tube(body, 'continuous_front_drl', [[-1.01, .978, -half - .022], [0, .988, -half - .030], [1.01, .978, -half - .022]], .011, blade, 64);
+  box(body, 'drl_channel', [2.06, .055, .04], [0, 1.0, -half + .02], seal, .006);
+  tube(body, 'continuous_front_drl', [[-1.01, .998, -half + .008], [0, 1.008, -half + .004], [1.01, .998, -half + .008]], .014, blade, 64);
   for (const s of [-1, 1]) {
-    box(body, 'projector_cluster', [.26, .053, .028], [s * .76, .55, -half - .012], trim, .015);
-    for (let i = 0; i < 3; i++) box(body, 'headlight_module', [.051, .028, .013], [s * .76 + (i - 1) * .066, .55, -half - .030], white, .007);
+    box(body, 'projector_cluster', [.4, .12, .06], [s * .78, .58, -half + .04], trim, .016);
+    box(body, 'headlight_lens', [.34, .09, .014], [s * .78, .58, -half + .004], lens, .004);
+    for (let i = 0; i < 3; i++) box(body, 'headlight_module', [.07, .04, .012], [s * .78 + (i - 1) * .09, .58, -half + .02], white, .006);
   }
   tube(body, 'single_wiper', [[-.84, 1.265, -1.095], [-.675, 1.69, -.28]], .009, trim, 12);
   box(body, 'frunk_tub', [1.73, .16, .98], [0, .77, -2.05], carpet, .055);
@@ -692,6 +712,23 @@ function cybertruck(root) {
   const port = pivot(body, 'charge_port', [-w, 1.06, 2.4]);
   box(port, 'charge_flap', [.017, .13, .16], [0, 0, .045], steel, .008);
   box(body, 'charge_inlet', [.025, .085, .1], [-w + .014, 1.06, 2.44], trim, .007);
+  box(body, 'undertray', [1.76, .05, 5.05], [0, .22, .15], trim, .008);
+  box(body, 'front_bulkhead', [1.72, .72, .04], [0, .72, -half + .28], trim, .008);
+  quad(body, 'roof_skin', [[-.72, 1.74, -.02], [.72, 1.74, -.02], [.8, 1.32, .88], [-.8, 1.32, .88]], steel);
+  for (const s of [-1, 1]) {
+    box(body, 'rocker', [.1, .1, 3.2], [s * (w - .015), .32, .08], trim, .012);
+    patch(body, 'inner_side', (u, v) => {
+      const z = lerp(-half + .12, half - .08, u);
+      return V(s * (w - .055), lerp(.3, Math.min(belt(z) - .02, 1.16), v), z);
+    }, 40, 8, steel, 0);
+    for (const axle of [front, rear]) {
+      const arch = new T.TorusGeometry(r + .08, .042, 8, 28, Math.PI);
+      arch.rotateY(Math.PI / 2);
+      arch.translate(s * (w - .01), r, axle);
+      mesh(body, 'wheel_arch', arch, trim);
+      box(body, 'arch_close', [.06, .55, r * 1.7], [s * .62, .72, axle], seal, .01);
+    }
+  }
   cabin(body, {
     truck: true,
     lift: .23,
@@ -748,37 +785,50 @@ function cybercab(root) {
   const side = (s, z, t) => V(s * width(z) * (0.96 + 0.04 * Math.sin(t * Math.PI / 2)), lerp(lower(z), belt(z), t), z);
   const canopy = (s, z, t) => V(s * lerp(0.42, width(z) - 0.02, 1 - t), lerp(belt(z) + 0.02, crown(z), t), z);
   for (const s of [-1, 1]) {
-    patch(body, 'cab_nose_side', (u, v) => side(s, lerp(-half + 0.01, -0.92, u), v), 22, 10, paint, 0.008);
-    patch(doors[s], 'cab_door_side', (u, v) => side(s, lerp(-0.92, 1.02, u), v), 36, 10, paint, 0.008);
-    patch(body, 'cab_tail_side', (u, v) => side(s, lerp(1.02, half - 0.01, u), v), 20, 10, paint, 0.008);
-    patch(doors[s], 'cab_canopy', (u, v) => canopy(s, lerp(-0.88, 0.98, u), v), 28, 10, glass, 0.002);
+    patch(body, 'cab_nose_side', (u, v) => side(s, lerp(-half + 0.01, -0.88, u), v), 28, 12, paint, 0);
+    patch(doors[s], 'cab_door_side', (u, v) => side(s, lerp(-0.94, 1.06, u), v), 40, 12, paint, 0);
+    patch(body, 'cab_tail_side', (u, v) => side(s, lerp(1.0, half - 0.01, u), v), 24, 12, paint, 0);
+    patch(doors[s], 'cab_canopy', (u, v) => canopy(s, lerp(-0.9, 1.0, u), v), 32, 12, glass, 0);
+    tube(doors[s], 'canopy_rail', [[s * (width(-0.7) - 0.02), belt(-0.7), -0.7], [s * 0.5, crown(0.05), 0.05], [s * (width(0.85) - 0.02), belt(0.85), 0.85]], 0.012, trim, 28);
     box(doors[s], 'door_card', [0.045, 0.38, 1.35], [s * (w - 0.08), 0.62, 0.05], leather, 0.02);
     box(doors[s], 'door_armrest', [0.07, 0.045, 0.7], [s * (w - 0.12), 0.66, 0.02], trim, 0.014);
+    box(body, 'rocker', [0.07, 0.07, 2.35], [s * (w - 0.015), 0.2, 0.04], trim, 0.01);
+    tube(body, 'beltline', [[s * (w - 0.01), 0.62, -1.55], [s * (w + 0.008), 0.9, -0.1], [s * (w - 0.01), 0.64, 1.45]], 0.011, trim, 32);
+    for (const axle of [frontAxle, rearAxle]) {
+      const arch = new T.TorusGeometry(r + 0.05, 0.04, 8, 20, Math.PI);
+      arch.rotateY(Math.PI / 2);
+      arch.translate(s * (w - 0.03), r, axle);
+      mesh(body, 'wheel_arch', arch, seal);
+    }
   }
   patch(hood, 'cab_hood', (u, v) => {
-    const z = lerp(-half + 0.2, -0.9, v),
-      x = (u - 0.5) * 2 * width(z);
-    return V(x, crown(z) + 0.03 * Math.sin(v * Math.PI) * (1 - (2 * u - 1) ** 2), z);
-  }, 28, 22, paint, 0.008);
+    const z = lerp(-half + 0.05, -0.86, v),
+      x = (u - 0.5) * 2 * (width(z) - 0.012),
+      slope = v * v;
+    return V(x, lerp(Math.max(lower(z), 0.34), crown(z) - 0.015, 0.25 + 0.75 * slope) + 0.006, z);
+  }, 32, 20, paint, 0);
   patch(body, 'cab_front_glass', (u, v) => {
-    const z = lerp(-0.88, -0.08, v);
-    return V((u - 0.5) * 2 * lerp(width(z) - 0.04, 0.46, v), lerp(belt(z) + 0.04, crown(z), v), z);
-  }, 20, 14, glass);
+    const z = lerp(-0.9, -0.06, v);
+    return V((u - 0.5) * 2 * lerp(width(z) - 0.03, 0.48, v), lerp(belt(z) + 0.02, crown(z) + 0.004, v), z);
+  }, 24, 16, glass);
   patch(body, 'cab_roof', (u, v) => {
-    const z = lerp(-0.08, 0.72, v);
-    return V((u - 0.5) * 2 * lerp(0.46, 0.5, v), crown(z) + 0.01, z);
-  }, 16, 10, glass);
+    const z = lerp(-0.06, 0.78, v);
+    return V((u - 0.5) * 2 * lerp(0.48, 0.52, Math.sin(v * Math.PI)), crown(z) + 0.012, z);
+  }, 18, 12, glass);
   patch(hatch, 'cab_tail', (u, v) => {
-    const z = lerp(1.05, half - 0.04, v),
-      x = (u - 0.5) * 2 * width(z);
-    return V(x, lerp(belt(z), crown(z), 0.35 + 0.4 * (1 - v)), z);
-  }, 20, 16, paint, 0.008);
-  box(body, 'front_valence', [1.52, 0.12, 0.1], [0, 0.28, -half + 0.06], trim, 0.02);
-  box(body, 'rear_valence', [1.28, 0.1, 0.1], [0, 0.26, half - 0.05], trim, 0.02);
-  tube(body, 'cab_lightbar', [[-0.86, 0.72, -half - 0.012], [0, 0.76, -half - 0.02], [0.86, 0.72, -half - 0.012]], 0.012, blade, 48);
+    const z = lerp(1.08, half - 0.02, v),
+      x = (u - 0.5) * 2 * (width(z) - 0.008);
+    return V(x, lerp(belt(z), crown(z), 0.42 + 0.38 * (1 - v)) + 0.004, z);
+  }, 24, 16, paint, 0);
+  box(body, 'undertray', [1.55, 0.045, 3.55], [0, 0.16, 0.02], trim, 0.008);
+  box(body, 'front_valence', [1.62, 0.16, 0.12], [0, 0.3, -half + 0.05], trim, 0.02);
+  box(body, 'rear_valence', [1.4, 0.12, 0.1], [0, 0.28, half - 0.04], trim, 0.02);
+  box(body, 'lightbar_housing', [1.72, 0.07, 0.035], [0, 0.73, -half + 0.03], seal, 0.008);
+  tube(body, 'cab_lightbar', [[-0.8, 0.73, -half + 0.012], [0, 0.755, -half + 0.006], [0.8, 0.73, -half + 0.012]], 0.016, blade, 48);
+  box(body, 'rear_lamp_bar', [1.28, 0.05, 0.02], [0, 0.68, half - 0.012], tail, 0.006);
   for (const s of [-1, 1]) {
-    box(body, 'cab_projector', [0.16, 0.04, 0.02], [s * 0.58, 0.64, -half - 0.008], white, 0.008);
-    tube(body, 'cab_tail_lamp', [[s * 0.12, 0.7, half + 0.008], [s * 0.62, 0.66, half + 0.004]], 0.01, tail, 16);
+    box(body, 'cab_projector', [0.22, 0.055, 0.03], [s * 0.62, 0.66, -half + 0.02], white, 0.008);
+    box(body, 'cab_projector_lens', [0.2, 0.045, 0.01], [s * 0.62, 0.66, -half + 0.004], lens, 0.004);
   }
   cabin(body, { cab: true, lift: 0.02, width: w * 2 });
   for (const s of [-1, 1]) {

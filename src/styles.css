@@ -410,6 +410,43 @@ strong {
   background: #ffffff16;
   color: white;
 }
+.backdrop-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.backdrop-chips button {
+  border: 1px solid #ffffff14;
+  background: #070a0f5c;
+  color: #a4adbb;
+  border-radius: 99px;
+  padding: 7px 10px;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+}
+.backdrop-chips button.selected {
+  background: #ffffff16;
+  color: white;
+  border-color: #ffffff30;
+}
+.lamp-toggle {
+  margin-top: 10px;
+}
+.lamp-toggle button {
+  width: 100%;
+  border: 1px solid #ffffff14;
+  background: #070a0f5c;
+  color: #a4adbb;
+  border-radius: 4px;
+  padding: 9px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lamp-toggle button.selected {
+  color: white;
+  background: #ffffff12;
+}
 .feature-options {
   display: grid;
 }
@@ -686,8 +723,17 @@ strong {
 }
 .environment-daylight .vehicle-title,
 .environment-daylight .model-nav,
-.environment-daylight .studio-header {
-  filter: drop-shadow(0 1px 6px #27334055);
+.environment-daylight .studio-header,
+.environment-mars .vehicle-title,
+.environment-mars .model-nav,
+.environment-mars .studio-header,
+.environment-forest .vehicle-title,
+.environment-forest .model-nav,
+.environment-forest .studio-header,
+.environment-desert .vehicle-title,
+.environment-desert .model-nav,
+.environment-desert .studio-header {
+  filter: drop-shadow(0 1px 6px #27334088);
 }
 @media (min-width: 1500px) {
   .vehicle-stage {
