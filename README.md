@@ -7,7 +7,7 @@ An independent, noncommercial browser vehicle studio with configurable finishes,
 ## Experience
 
 - Detailed artist-created original-generation Model 3 and Model S meshes, hosted in this repository.
-- Artist-created Highland with original textures, configurable materials and a static body (no torn door/hood cuts).
+- Artist-created Highland with original textures, a static body, and a paint finish that colors the main body shell.
 - Juniper uses BloxBloger's Sketchfab 2025 Model Y (CC BY-NC, 307k triangles). Juniper keeps a static body. Cybertruck and Cybercab still use original authored studies with articulated panels; higher-fidelity CC BY production meshes exist on Sketchfab but require a login to download. See [asset sourcing](docs/asset-sourcing.md).
 - Model and trim selection, exterior colors, interior finishes, and trim-specific sport hardware.
 - Guided tours with eased camera moves followed by articulated demonstrations. Individual features can be selected, revisited, or exited.

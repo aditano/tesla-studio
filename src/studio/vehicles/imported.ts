@@ -1,11 +1,4 @@
 import * as THREE from "three";
-import {
-  JUNIPER_PANEL_ORIGINS,
-  addPresentationPanels,
-  applyPaintHoles,
-  attachPanelGroups,
-} from "./panelRig";
-
 const KNOWN_ROLES = new Set([
   "exterior_paint",
   "exterior_steel",
@@ -189,9 +182,6 @@ export function prepareImported(source: THREE.Group, model: string) {
   scene.add(body);
   const groups: Record<string, THREE.Group> = { body };
   const materials = new Map<string, THREE.MeshPhysicalMaterial>();
-  const juniper = model === "juniper" || model === "model-y";
-  if (juniper) attachPanelGroups(body, groups, JUNIPER_PANEL_ORIGINS);
-
   const tireCenters: THREE.Vector3[] = [];
   source.traverse((object) => {
     if (!(object instanceof THREE.Mesh)) return;
@@ -281,16 +271,12 @@ export function prepareImported(source: THREE.Group, model: string) {
 
   if (model === "juniper" || model === "model-y")
     addPerformanceSpoiler(body, materials);
-  if (juniper) {
-    addPresentationPanels(groups, "juniper", materials);
-    applyPaintHoles(materials);
-  }
 
   return {
     scene,
     materials,
     ownsGeometry: true,
-    staticBody: !juniper,
+    staticBody: true,
     model,
   };
 }

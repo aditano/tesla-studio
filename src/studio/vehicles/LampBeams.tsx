@@ -66,7 +66,7 @@ export function LampBeams({ model, on }: { model: string; on: boolean }) {
   const environment = useStudio((s) => s.environment);
   const night = environment === "midnight";
   const day = environment === "daylight";
-  const intensity = on ? (night ? 1800 : day ? 220 : 720) : 0;
+  const intensity = on ? (night ? 800 : day ? 160 : 360) : 0;
   const pool = usePoolMap();
   const poolOpacity = on ? (night ? 0.62 : day ? 0.16 : 0.34) : 0;
   const truck = model === "cybertruck";
