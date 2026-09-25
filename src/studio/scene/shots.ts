@@ -88,3 +88,55 @@ export function shotFor(
 ) {
   return MODEL_SHOTS[model]?.[feature] ?? SHOTS[feature];
 }
+
+const EXTERIOR_ORBIT_MIN = 3.8;
+const INTERIOR_ORBIT_MIN = 0.25;
+/** Closest an exterior feature may pull the camera, even when its shot is tight. */
+const CLOSE_SHOT_FLOOR = 2.4;
+
+function exteriorSpan(model: ModelId, viewportWidth: number) {
+  const modelSpan = model === "cybertruck" ? 1.18 : model === "cybercab" ? 0.9 : 1;
+  return modelSpan * (viewportWidth < 768 ? 1.28 : 1);
+}
+
+/** Camera pose after the same framing CinematicControls flies to. */
+export function frameShot(
+  model: ModelId,
+  feature: FeatureId | "overview",
+  viewportWidth: number,
+): Shot {
+  const shot = shotFor(model, feature);
+  const target: [number, number, number] = [...shot.target];
+  if (feature === "interior") return { position: [...shot.position], target };
+  const span = exteriorSpan(model, viewportWidth);
+  return {
+    position: [
+      target[0] + (shot.position[0] - target[0]) * span,
+      Math.max(0.62, target[1] + (shot.position[1] - target[1]) * span),
+      target[2] + (shot.position[2] - target[2]) * span,
+    ],
+    target,
+  };
+}
+
+export function shotDistance(shot: Shot) {
+  return Math.hypot(
+    shot.position[0] - shot.target[0],
+    shot.position[1] - shot.target[1],
+    shot.position[2] - shot.target[2],
+  );
+}
+
+/** OrbitControls floor. Overview stays at 3.8 m. A closer authored feature shot
+ * lowers the floor just enough to land, so the control cannot push the camera back. */
+export function minOrbitDistance(
+  model: ModelId,
+  feature: FeatureId | "overview" | null,
+  viewportWidth: number,
+) {
+  if (feature === "interior") return INTERIOR_ORBIT_MIN;
+  if (feature === null || feature === "overview") return EXTERIOR_ORBIT_MIN;
+  const distance = shotDistance(frameShot(model, feature, viewportWidth));
+  if (distance >= EXTERIOR_ORBIT_MIN) return EXTERIOR_ORBIT_MIN;
+  return Math.max(CLOSE_SHOT_FLOOR, distance - 0.08);
+}

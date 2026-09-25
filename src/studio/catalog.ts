@@ -369,7 +369,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Cybertruck",
     tag: "Exoskeleton",
     marketNote:
-      "Cybertruck mesh by Nieve5677 on Sketchfab, CC BY 4.0. Length follows the owner manual (5.6829 m); the export is wider than the 2.03 m body, so the studio keeps it near 2.2 m. The body stays closed and panel tours are camera studies. Illustrative finishes, not factory CAD, and not a Tesla product.",
+      "Cybertruck mesh by Nieve5677 on Sketchfab, CC BY 4.0. Length follows the owner manual (5.6829 m); the export is wider than the 2.03 m body, so the studio keeps it near 2.2 m. The body stays closed. Panel tours and air suspension are camera studies because the wheels are part of that shell. Illustrative finishes, not factory CAD, and not a Tesla product.",
     variants: [
       {
         id: "awd",
@@ -401,7 +401,8 @@ export const VEHICLES: VehicleDef[] = [
       {
         id: "suspension",
         label: "Air suspension",
-        hint: "Raise and lower the body",
+        hint: "Side view of the stance",
+        cameraOnly: true,
       },
       {
         id: "tonneau",

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { VEHICLES, vehicleById, featuresForVehicle } from "./catalog";
 import { BACKDROPS } from "./scene/backdrops";
+import type { RenderQuality } from "./scene/quality";
 import { useStudio } from "./store";
 const VehicleCanvas = lazy(() =>
   import("./scene/VehicleCanvas").then((m) => ({ default: m.VehicleCanvas })),
@@ -85,6 +86,8 @@ const cameraOnlyCopy: Record<string, string> = {
     "The charge port sits on the driver-side rear quarter. This view stays on the closed body.",
   tonneau:
     "The bed cover, seen from above. This mesh has no separate tonneau, so the panel stays closed.",
+  suspension:
+    "The wheels are part of the closed body, so this view stays on the stance instead of lifting the tires.",
 };
 
 function featureCaption(
@@ -534,11 +537,12 @@ export function Studio() {
                 aria-label="Render quality"
                 value={s.quality}
                 onChange={(e) =>
-                  s.setQuality(e.target.value as "auto" | "high")
+                  s.setQuality(e.target.value as RenderQuality)
                 }
               >
                 <option value="auto">Auto quality</option>
                 <option value="high">High quality</option>
+                <option value="low">Low quality</option>
               </select>
             </div>
             <div className="backdrop-chips" role="group" aria-label="Background">
@@ -632,7 +636,8 @@ export function Studio() {
                   Those bodies stay closed, and panel tours move the camera
                   instead of cutting the paint. Cybertruck is the Nieve5677
                   Sketchfab model under CC BY 4.0, scaled to the owner-manual
-                  length. Air suspension still raises that closed body.
+                  length. Air suspension stays a camera study: the tires are part of
+                  that shell, so the body is not raised.
                   Cybercab is an original authored concept study used because
                   the CC BY scan could not be downloaded without a Sketchfab
                   account. It is not a production specification. Paint and
