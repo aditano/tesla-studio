@@ -9,6 +9,7 @@ import { usesImportedPresentation, vehicleGlb } from "./assets";
 import { prepareHighland } from "./highland";
 import { prepareImported } from "./imported";
 import { LampBeams } from "./LampBeams";
+import { suspensionLift, wheelsShareBody } from "./suspension";
 
 const partNames: Record<string, PartId> = {
   door_fl: "door-fl",
@@ -92,6 +93,10 @@ export function AuthoredVehicle({
     [],
   );
   const staticBody = "staticBody" in instance && instance.staticBody;
+  const wheelsLockedToBody = useMemo(
+    () => wheelsShareBody(instance.scene),
+    [instance],
+  );
   useEffect(() => {
     elapsed.current = 0;
   }, [feature]);
@@ -278,11 +283,7 @@ export function AuthoredVehicle({
       const target =
         ride -
         (variant.lowered ?? 0) +
-        (feature === "suspension"
-          ? reduced
-            ? 0.13
-            : 0.13 * (1 - Math.cos(elapsed.current * 1.5))
-          : 0);
+        suspensionLift(feature, reduced, elapsed.current, wheelsLockedToBody);
       rig.body.position.y = damp(rig.body.position.y, target);
     }
     if (feature === "lightbar" && !reduced)

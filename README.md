@@ -12,7 +12,7 @@ An independent, noncommercial browser vehicle studio with configurable finishes,
 - Model and trim selection, exterior colors, interior finishes, and trim-specific sport hardware.
 - Guided tours with eased camera moves followed by articulated demonstrations. Individual features can be selected, revisited, or exited.
 - Background switcher for the original studio, daylight and midnight stages plus Mars, a forest backroad, a night city and a desert highway. Outdoor scenes use a procedural sky, displaced dunes or city blocks, and a light rig tuned per backdrop. The forest adds instanced trees, god-ray shafts, fireflies, birds and a deer. Reflection maps are generated in Three.js at a web-sized resolution. No remote HDRIs.
-- Touch orbit and pinch zoom, collapsible mobile controls, adaptive rendering quality, loading/error states, keyboard-accessible controls and a help/credits dialog.
+- Touch orbit and pinch zoom, collapsible mobile controls, and render quality set to Auto (high at 768 px and wider), High, or Low. Loading and error states, keyboard-accessible controls, and a help/credits dialog.
 
 ## Controls
 
@@ -20,7 +20,7 @@ Drag to orbit; scroll or pinch to zoom. Select **Explore features** for an indiv
 
 ## Fidelity and scope
 
-This is a real-time WebGL showcase, **not an Unreal Engine renderer or a factory CAD configurator**. Highland uses a licensed artist mesh with 179,692 preserved triangles, original textures and approximately 4 MB of compressed geometry. Its body is kept intact: door, hood and liftgate tours are camera studies because the source is a merged export, not a hinge rig. Juniper uses BloxBloger's CC BY-NC Sketchfab mesh (307k triangles, ~5 MB compressed). Juniper keeps a closed body. Cybertruck uses the Nieve5677 CC BY mesh (about 73k triangles, one stainless role, length 5.683 m). Its panels are camera studies; suspension still lifts the body. Cybercab remains an authored concept study because the CC BY scan is login-gated. Fine surface fidelity and physically accurate textures still limit photorealism. This is not a Tesla-endorsed project.
+This is a real-time WebGL showcase, **not an Unreal Engine renderer or a factory CAD configurator**. Highland uses a licensed artist mesh with 179,692 preserved triangles, original textures and approximately 4 MB of compressed geometry. Its body is kept intact: door, hood and liftgate tours are camera studies because the source is a merged export, not a hinge rig. Juniper uses BloxBloger's CC BY-NC Sketchfab mesh (307k triangles, ~5 MB compressed). Juniper keeps a closed body. Cybertruck uses the Nieve5677 CC BY mesh (about 73k triangles, one stainless role, length 5.683 m). Its panels and air suspension are camera studies: the wheels are part of the closed shell, so the body is not raised. Cybercab remains an authored concept study because the CC BY scan is login-gated. Fine surface fidelity and physically accurate textures still limit photorealism. This is not a Tesla-endorsed project.
 
 Heritage vehicles retain their actual older-generation labels. They are not passed off as Highland, Juniper or Plaid. Trim treatments, colors and interior selections are illustrative rather than a current Tesla ordering guide. No live pricing, range or performance figures are fabricated.
 
@@ -41,7 +41,7 @@ The Vite base path remains `/tesla-studio/` for the existing GitHub Pages site. 
 
 `npm test` covers model/trim/feature selection, camera-shot coverage, state reset and invalid options, procedural geometry validity, parsing the actual heritage asset buffers through Three.js, and decoding all four compressed GLBs with the runtime loader, validating geometry budgets and hinge directions. The imported Highland test verifies source triangle preservation, texture paths, scale and rig coverage. Textures are stubbed only during the headless geometry test, with file existence checked separately. These are structural tests, not GPU screenshot or browser interaction tests.
 
-GitHub Actions runs a clean install, the tests, TypeScript and the production build, then publishes the result to the existing `gh-pages` branch on pushes to `main`.
+GitHub Actions runs a clean install, TypeScript, the tests, and the production build on pull requests and on `main`. Only a push to `main` (or a manual run there) publishes `dist` to the existing `gh-pages` branch.
 
 ## Architecture
 

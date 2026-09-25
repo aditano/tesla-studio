@@ -8,15 +8,16 @@ import {
   type PartId,
 } from "./catalog";
 import type { BackdropId } from "./scene/backdrops";
+import type { RenderQuality } from "./scene/quality";
 
 type StudioState = {
   environment: BackdropId;
-  quality: "auto" | "high";
+  quality: RenderQuality;
   cameraRevision: number;
   demoFeature: FeatureId | null;
   setDemoFeature: (id: FeatureId | null) => void;
   setEnvironment: (id: BackdropId) => void;
-  setQuality: (id: "auto" | "high") => void;
+  setQuality: (id: RenderQuality) => void;
   modelId: ModelId;
   variantId: string;
   exteriorId: string;

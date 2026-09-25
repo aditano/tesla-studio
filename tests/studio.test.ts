@@ -6,7 +6,9 @@ import { PAINT, VEHICLES, featuresForVehicle } from "../src/studio/catalog";
 import { vehicleGlb } from "../src/studio/vehicles/assets";
 import { glassParams, paintParams } from "../src/studio/materials";
 import { useStudio } from "../src/studio/store";
-import { SHOTS, shotFor } from "../src/studio/scene/shots";
+import { SHOTS, frameShot, minOrbitDistance, shotDistance, shotFor } from "../src/studio/scene/shots";
+import { prefersHighQuality } from "../src/studio/scene/quality";
+import { suspensionLift, wheelsShareBody } from "../src/studio/vehicles/suspension";
 import { coachwork } from "../src/studio/vehicles/coachwork";
 import { prepareHeritage, pivots, heritageOpenAngles } from "../src/studio/vehicles/HeritageVehicle";
 import { BACKDROPS } from "../src/studio/scene/backdrops";
@@ -34,7 +36,17 @@ for (const vehicle of VEHICLES) {
       assert.equal(useStudio.getState().feature, feature.id);
       assert.equal(useStudio.getState().autoRotate, false);
       assert.equal(useStudio.getState().demoFeature, null, "Animation must wait for the camera");
+      for (const width of [390, 1440]) {
+        const framed = frameShot(vehicle.id, feature.id, width);
+        const distance = shotDistance(framed);
+        const min = minOrbitDistance(vehicle.id, feature.id, width);
+        assert.ok(
+          distance + 1e-6 >= min,
+          `${vehicle.id}/${variant.id}/${feature.id}@${width}: framed ${distance.toFixed(3)} m is inside minDistance ${min.toFixed(3)} m`,
+        );
+      }
     }
+    assert.equal(minOrbitDistance(vehicle.id, null, 1440), 3.8, `${vehicle.id}: overview keeps the exterior orbit floor`);
   }
   useStudio.getState().resetPose();
   assert.equal(useStudio.getState().feature, null);
@@ -69,7 +81,7 @@ assert.match(byId("cybertruck").marketNote ?? "", /Nieve5677/i, "Cybertruck mark
 assert.match(byId("cybertruck").marketNote ?? "", /illustrative/i, "Cybertruck marketNote must stay illustrative");
 assert.doesNotMatch(byId("cybertruck").marketNote ?? "", /endorsed/i, "Do not claim Tesla endorsement");
 assert.deepEqual(byId("cybertruck").parts, [], "Imported Cybertruck is not a hinge rig");
-for (const id of ["frunk", "trunk", "charge", "tonneau"] as const) {
+for (const id of ["frunk", "trunk", "charge", "tonneau", "suspension"] as const) {
   assert.equal(byId("cybertruck").features.find((f) => f.id === id)?.cameraOnly, true, `Cybertruck ${id} stays a camera study`);
 }
 const paintKeys = [
@@ -87,6 +99,29 @@ assert.equal(glassParams().transmission, 0);
 assert.equal(glassParams("#8fb4c8", 0.28, "lens").transmission, 0);
 console.log("PASS: paintParams API and glass transmission stay stable");
 assert.deepEqual(shotFor("model-3-heritage", "suspension"), SHOTS.suspension, "shotFor must fall back to SHOTS");
+const model3Performance = shotDistance(frameShot("model-3", "performance", 1440));
+assert.ok(
+  model3Performance > 3.1 && model3Performance < 3.25,
+  `Model 3 desktop performance shot stays near 3.15 m, got ${model3Performance.toFixed(3)}`,
+);
+assert.ok(
+  minOrbitDistance("model-3", "performance", 1440) < 3.8,
+  "Performance close-up must not inherit the 3.8 m exterior floor",
+);
+assert.ok(minOrbitDistance("model-3", "performance", 1440) <= model3Performance);
+assert.equal(minOrbitDistance("model-3", "interior", 1440), 0.25);
+assert.equal(prefersHighQuality("auto", 1440), true);
+assert.equal(prefersHighQuality("auto", 768), true);
+assert.equal(prefersHighQuality("auto", 767), false);
+assert.equal(prefersHighQuality("low", 1440), false);
+assert.equal(prefersHighQuality("high", 390), true);
+useStudio.getState().setQuality("low");
+assert.equal(useStudio.getState().quality, "low");
+useStudio.getState().setQuality("auto");
+assert.ok(Math.abs(suspensionLift("suspension", false, Math.PI / 1.5, false) - 0.26) < 1e-6);
+assert.equal(suspensionLift("suspension", true, 0, false), 0.13);
+assert.equal(suspensionLift("suspension", false, 1, true), 0);
+assert.equal(suspensionLift(null, false, 1, false), 0);
 for (const vehicle of VEHICLES) {
   const interior = shotFor(vehicle.id, "interior");
   assert.ok(interior.position[1] > 0.75, `${vehicle.id}: interior camera must stay above the floor`);
@@ -285,6 +320,15 @@ for (const name of ['body', 'wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
  assert.ok(node.children.length, `Highland rig missing ${name}`);
 }
 assert.equal(highland.staticBody, true, 'Highland body stays closed');
+assert.equal(wheelsShareBody(highland.scene), false, 'Highland wheels are a separate rig');
+{
+  const body = highland.scene.getObjectByName('body')!;
+  const wheel = highland.scene.getObjectByName('wheel_fl')!;
+  const planted = new THREE.Box3().setFromObject(wheel).min.y;
+  body.position.y = 0.2;
+  assert.ok(Math.abs(new THREE.Box3().setFromObject(wheel).min.y - planted) < 1e-3, 'Highland wheels stay planted when the body rises');
+  body.position.y = 0;
+}
 for (const name of ['hood', 'tailgate', 'door_fl', 'proxy_door_fl', 'hit_hood']) {
  assert.equal(highland.scene.getObjectByName(name), undefined, `Highland must not cut ${name}`);
 }
@@ -326,6 +370,31 @@ for (const spec of [
     assert.equal(prepared.scene.getObjectByName(name), undefined, `${spec.id} must not cut ${name}`);
   }
   assert.ok(prepared.scene.getObjectByName('body'));
+  assert.equal(wheelsShareBody(prepared.scene), !spec.wheels, `${spec.id} wheel rig`);
+  {
+    const body = prepared.scene.getObjectByName('body')!;
+    if (spec.wheels) {
+      const wheel = prepared.scene.getObjectByName('wheel_fl')!;
+      const planted = new THREE.Box3().setFromObject(wheel).min.y;
+      body.position.y = 0.25;
+      assert.ok(
+        Math.abs(new THREE.Box3().setFromObject(wheel).min.y - planted) < 1e-3,
+        `${spec.id} wheels stay planted when the body rises`,
+      );
+    } else {
+      const before = new THREE.Box3().setFromObject(body);
+      assert.ok(before.min.y < 0.05, `${spec.id} contact patch belongs to the body (${before.min.y})`);
+      body.position.y = 0.25;
+      const after = new THREE.Box3().setFromObject(body);
+      assert.ok(after.min.y > before.min.y + 0.2, `${spec.id} fused wheels rise with the body`);
+      assert.equal(
+        suspensionLift('suspension', false, Math.PI / 1.5, wheelsShareBody(prepared.scene)),
+        0,
+        `${spec.id} suspension demo must not lift a fused wheel shell`,
+      );
+    }
+    body.position.y = 0;
+  }
   if (spec.wheels) {
     for (const name of ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
       assert.ok(prepared.scene.getObjectByName(name), `${spec.id} missing ${name}`);
@@ -344,6 +413,14 @@ const truckCredits = await fs.readFile("public/models/cybertruck-import/CREDITS.
 assert.match(truckCredits, /CC BY 4\.0/);
 assert.match(truckCredits, /Nieve5677/);
 assert.doesNotMatch(truckCredits, /endorsed by Tesla/i);
+assert.match(truckCredits, /does not lift the body/);
+const canvasSource = await fs.readFile("src/studio/scene/VehicleCanvas.tsx", "utf8");
+assert.match(canvasSource, /minOrbitDistance\(/);
+assert.match(canvasSource, /frameShot\(/);
+assert.doesNotMatch(canvasSource, /minDistance=\{[^}]*3\.8/);
+const authoredSource = await fs.readFile("src/studio/vehicles/AuthoredVehicle.tsx", "utf8");
+assert.match(authoredSource, /suspensionLift\(/);
+assert.match(authoredSource, /wheelsShareBody\(/);
 const cabCredits = await fs.readFile("public/models/cybercab-import/CREDITS.md", "utf8");
 assert.match(cabCredits, /zwir3kk/);
 assert.match(cabCredits, /CC BY 4\.0/);

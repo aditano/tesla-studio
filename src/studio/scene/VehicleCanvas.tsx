@@ -22,7 +22,8 @@ import { ActiveVehicle } from "../vehicles/ActiveVehicle";
 import { backdropById, type Backdrop } from "./backdrops";
 import { BackdropScenery } from "./scenery";
 
-import { shotFor } from "./shots";
+import { frameShot, minOrbitDistance } from "./shots";
+import { prefersHighQuality } from "./quality";
 
 function CinematicControls() {
   const controls = useRef<OrbitControlsImpl>(null);
@@ -43,18 +44,9 @@ function CinematicControls() {
     const cam = camera as THREE.PerspectiveCamera;
     cam.fov = size.width < 768 ? 42 : 32;
     cam.updateProjectionMatrix();
-    const shot = shotFor(model, feature ?? "overview");
-    const target = new THREE.Vector3(...shot.target);
-    const end = new THREE.Vector3(...shot.position);
-    if (feature !== "interior") {
-      const span =
-        model === "cybertruck" ? 1.18 : model === "cybercab" ? 0.9 : 1;
-      end
-        .sub(target)
-        .multiplyScalar(span * (size.width < 768 ? 1.28 : 1))
-        .add(target);
-      end.y = Math.max(end.y, 0.62);
-    }
+    const framed = frameShot(model, feature ?? "overview", size.width);
+    const target = new THREE.Vector3(...framed.target);
+    const end = new THREE.Vector3(...framed.position);
     const reduced = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
@@ -91,7 +83,7 @@ function CinematicControls() {
       dampingFactor={0.08}
       autoRotate={autoRotate && !feature}
       autoRotateSpeed={0.45}
-      minDistance={feature === "interior" ? 0.25 : 3.8}
+      minDistance={minOrbitDistance(model, feature, size.width)}
       maxDistance={18}
       minPolarAngle={0.12}
       maxPolarAngle={Math.PI / 2 - 0.04}
@@ -513,7 +505,7 @@ export function VehicleCanvas() {
     m.addEventListener("change", update);
     return () => m.removeEventListener("change", update);
   }, []);
-  const high = quality === "high" || !narrow;
+  const high = prefersHighQuality(quality, narrow ? 767 : 1024);
   return (
     <Canvas
       shadows
