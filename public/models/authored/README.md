@@ -1,6 +1,6 @@
 # Original newer-vehicle assets
 
-These four GLBs are original Tesla-inspired presentation meshes created for Tesla Studio. They replace the earlier runtime body primitives. No downloaded third-party mesh or texture is embedded in these files.
+These four GLBs are original Tesla-inspired presentation meshes created for Tesla Studio. No downloaded third-party mesh or texture is embedded in these files. The viewer loads Highland, Juniper, and the Nieve5677 Cybertruck from their own folders. `cybertruck.glb` here is a fallback asset and is not loaded. `cybercab.glb` is still the runtime Cybercab until a CC BY download is added. See `docs/asset-sourcing.md`.
 
 The surfaces are authored from longitudinal profiles and separate panel patches. Juniper uses a more vertical fascia, wraparound front and rear light bars, and crossover stance. Cybertruck is a flat exoskeleton at the owner-manual size: wedged hood with a center crease, full-width lamp channel, cut wheel openings with black barrels, sail panels and a seven-blade cover wheel — not the 2019 concept. Cybercab is a smooth two-seat pod with a continuous nose-to-hood surface, canopy glass, rising doors, a thin light bar and turbine aero covers. Neither mesh is a downloaded scan. Detail includes wheel openings, glazing, panel seals, mirror housings, light assemblies, tire tread, brake rotors and calipers, alternative wheel faces, seats, dashboard, display and door cards. Materials are separate for configurable paint, stainless steel, upholstery, glass and lighting.
 
