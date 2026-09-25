@@ -348,8 +348,36 @@ function Floor({ high }: { high: boolean }) {
     texture.anisotropy = 8;
     return texture;
   }, []);
+  const groundNoise = useMemo(() => {
+    if (backdrop.mirror) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const image = ctx.createImageData(256, 256);
+    let seed = 0;
+    for (let i = 0; i < backdrop.id.length; i++) seed = seed * 33 + backdrop.id.charCodeAt(i);
+    const rnd = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    for (let i = 0; i < image.data.length; i += 4) {
+      const n = 168 + rnd() * 87;
+      image.data[i] = n;
+      image.data[i + 1] = n;
+      image.data[i + 2] = n;
+      image.data[i + 3] = 255;
+    }
+    ctx.putImageData(image, 0, 0);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(5, 5);
+    texture.colorSpace = THREE.NoColorSpace;
+    return texture;
+  }, [backdrop.id, backdrop.mirror]);
   useEffect(() => () => floorMap.dispose(), [floorMap]);
   useEffect(() => () => fadeMap.dispose(), [fadeMap]);
+  useEffect(() => () => groundNoise?.dispose(), [groundNoise]);
   return (
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
@@ -405,6 +433,7 @@ function Floor({ high }: { high: boolean }) {
           <circleGeometry args={[48, 64]} />
           <meshStandardMaterial
             color={floor}
+            map={groundNoise ?? undefined}
             roughness={0.94}
             metalness={0.02}
           />

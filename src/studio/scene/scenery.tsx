@@ -1,108 +1,125 @@
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import type { Backdrop, SceneryKind } from "./backdrops";
+import { ForestScenery } from "./forest";
+import { CityScenery, DesertScenery, MarsScenery } from "./landscapes";
 
-function useSky(top: string, bottom: string) {
+function hash(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+function useSky(backdrop: Backdrop) {
   const texture = useMemo(() => {
     const canvas = document.createElement("canvas");
-    canvas.width = 16;
-    canvas.height = 256;
-    const ctx = canvas.getContext("2d")!;
-    const grad = ctx.createLinearGradient(0, 0, 0, 256);
-    grad.addColorStop(0, top);
-    grad.addColorStop(0.55, top);
-    grad.addColorStop(1, bottom);
+    canvas.width = 64;
+    canvas.height = 512;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+    const horizon =
+      backdrop.id === "mars"
+        ? "#e8b498"
+        : backdrop.id === "desert"
+          ? "#fff3d2"
+          : backdrop.id === "forest"
+            ? "#d5e4c4"
+            : backdrop.id === "night-city"
+              ? "#2c2458"
+              : backdrop.skyBottom;
+    const grad = ctx.createLinearGradient(0, 0, 0, 512);
+    grad.addColorStop(0, backdrop.skyTop);
+    grad.addColorStop(0.38, backdrop.skyTop);
+    grad.addColorStop(0.62, horizon);
+    grad.addColorStop(0.82, backdrop.skyBottom);
+    grad.addColorStop(1, backdrop.skyBottom);
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 16, 256);
+    ctx.fillRect(0, 0, 64, 512);
+    if (backdrop.id === "night-city") {
+      const rnd = hash(11);
+      for (let i = 0; i < 140; i++) {
+        const x = rnd() * 64;
+        const y = rnd() * 300;
+        const a = 0.28 + rnd() * 0.7;
+        ctx.fillStyle = `rgba(236,242,255,${a})`;
+        ctx.fillRect(x, y, rnd() > 0.85 ? 2 : 1, 1);
+      }
+    }
+    if (backdrop.id === "mars" || backdrop.id === "desert") {
+      const sunX = backdrop.id === "mars" ? 46 : 14;
+      const sunY = backdrop.id === "mars" ? 168 : 108;
+      const glow = ctx.createRadialGradient(sunX, sunY, 1, sunX, sunY, 70);
+      glow.addColorStop(0, "rgba(255,248,230,0.95)");
+      glow.addColorStop(0.18, "rgba(255,214,150,0.55)");
+      glow.addColorStop(1, "rgba(255,214,150,0)");
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, 64, 512);
+    }
     const map = new THREE.CanvasTexture(canvas);
     map.colorSpace = THREE.SRGBColorSpace;
     return map;
-  }, [top, bottom]);
+  }, [backdrop]);
   useEffect(() => () => texture.dispose(), [texture]);
   return texture;
 }
 
 function SkyDome({ backdrop }: { backdrop: Backdrop }) {
-  const map = useSky(backdrop.skyTop, backdrop.skyBottom);
+  const map = useSky(backdrop);
   return (
     <mesh>
-      <sphereGeometry args={[180, 24, 16]} />
+      <sphereGeometry args={[180, 32, 20]} />
       <meshBasicMaterial map={map} side={THREE.BackSide} depthWrite={false} />
     </mesh>
   );
 }
 
-function Dunes({
-  color,
-  count,
-  seed,
-}: {
-  color: string;
-  count: number;
-  seed: number;
-}) {
-  const dunes = useMemo(() => {
-    const list = [];
-    for (let i = 0; i < count; i++) {
-      const n = Math.sin(seed * 12.3 + i * 4.1);
-      const m = Math.cos(seed * 3.7 + i * 2.2);
-      list.push({
-        position: [n * 16 + (i % 2 === 0 ? -10 : 8), 0, m * 14 + (i - count / 2) * 3.2] as [
-          number,
-          number,
-          number,
-        ],
-        scale: [3.2 + (i % 3), 0.55 + (i % 4) * 0.18, 2.4 + (i % 2)] as [
-          number,
-          number,
-          number,
-        ],
-      });
+function useLeafCookie() {
+  const texture = useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 256;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return new THREE.CanvasTexture(canvas);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, 256, 256);
+    const rnd = hash(42);
+    ctx.fillStyle = "#0c0c0c";
+    for (let i = 0; i < 46; i++) {
+      ctx.beginPath();
+      ctx.ellipse(
+        rnd() * 256,
+        rnd() * 256,
+        8 + rnd() * 28,
+        4 + rnd() * 16,
+        rnd() * Math.PI,
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
     }
-    return list;
-  }, [count, seed]);
-  return (
-    <group>
-      {dunes.map((dune, i) => (
-        <mesh key={i} position={dune.position} scale={dune.scale} receiveShadow>
-          <sphereGeometry args={[1, 18, 10]} />
-          <meshStandardMaterial color={color} roughness={0.96} metalness={0} />
-        </mesh>
-      ))}
-    </group>
-  );
+    const map = new THREE.CanvasTexture(canvas);
+    map.colorSpace = THREE.NoColorSpace;
+    return map;
+  }, []);
+  useEffect(() => () => texture.dispose(), [texture]);
+  return texture;
 }
 
-function Trees() {
-  const spots = useMemo(() => {
-    const list = [];
-    for (let i = 0; i < 16; i++) {
-      const side = i % 2 === 0 ? -1 : 1;
-      const z = -18 + i * 2.15;
-      list.push({
-        x: side * (4.6 + (i % 3) * 0.85),
-        z,
-        h: 3.2 + (i % 4) * 0.55,
-        r: 0.9 + (i % 3) * 0.25,
-      });
-    }
-    return list;
-  }, []);
+function DappledCanopy() {
+  const map = useLeafCookie();
   return (
-    <group>
-      {spots.map((tree, i) => (
-        <group key={i} position={[tree.x, 0, tree.z]}>
-          <mesh position={[0, tree.h * 0.22, 0]} castShadow>
-            <cylinderGeometry args={[0.12, 0.16, tree.h * 0.45, 6]} />
-            <meshStandardMaterial color="#3a2a1c" roughness={0.9} />
-          </mesh>
-          <mesh position={[0, tree.h * 0.62, 0]} castShadow>
-            <coneGeometry args={[tree.r, tree.h * 0.72, 7]} />
-            <meshStandardMaterial color={i % 2 ? "#1e4630" : "#2f5a3c"} roughness={0.86} />
-          </mesh>
-        </group>
-      ))}
-    </group>
+    <spotLight
+      position={[3.4, 12.5, -2.6]}
+      angle={0.62}
+      penumbra={0.9}
+      intensity={18}
+      distance={36}
+      decay={1.4}
+      color="#f7f3df"
+      map={map}
+      castShadow={false}
+    />
   );
 }
 
@@ -119,7 +136,7 @@ function Road({
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]} receiveShadow>
         <planeGeometry args={[width, 80]} />
-        <meshStandardMaterial color={color} roughness={0.9} metalness={0.02} />
+        <meshStandardMaterial color={color} roughness={0.88} metalness={0.04} />
       </mesh>
       {dash &&
         Array.from({ length: 14 }, (_, i) => (
@@ -136,84 +153,27 @@ function Road({
   );
 }
 
-function City() {
-  const blocks = useMemo(() => {
-    const list = [];
-    for (let i = 0; i < 14; i++) {
-      const side = i % 2 === 0 ? -1 : 1;
-      const z = -22 + (i % 7) * 6.5;
-      const h = 4 + ((i * 3) % 8);
-      list.push({
-        x: side * (7.5 + (i % 3) * 1.4),
-        z,
-        h,
-        w: 2.2 + (i % 3) * 0.6,
-      });
-    }
-    return list;
-  }, []);
-  return (
-    <group>
-      {blocks.map((block, i) => (
-        <group key={i} position={[block.x, block.h / 2, block.z]}>
-          <mesh castShadow>
-            <boxGeometry args={[block.w, block.h, 2.4]} />
-            <meshStandardMaterial color="#141820" roughness={0.8} metalness={0.15} />
-          </mesh>
-          {Array.from({ length: 4 }, (_, row) => (
-            <mesh key={row} position={[0, -block.h / 2 + 1.2 + row * (block.h / 5), 1.22]}>
-              <planeGeometry args={[block.w * 0.72, 0.28]} />
-              <meshStandardMaterial
-                color="#ffd2a8"
-                emissive="#ffc48a"
-                emissiveIntensity={i % 3 === 0 ? 1.4 : 0.45}
-                roughness={0.4}
-              />
-            </mesh>
-          ))}
-        </group>
-      ))}
-    </group>
-  );
-}
-
 function Scenery({ kind }: { kind: SceneryKind }) {
   switch (kind) {
     case "none":
       return null;
     case "mars":
-      return (
-        <>
-          <Dunes color="#9a4632" count={7} seed={1} />
-          <mesh position={[18, 6.5, -24]}>
-            <sphereGeometry args={[2.2, 16, 12]} />
-            <meshBasicMaterial color="#ffd0b0" />
-          </mesh>
-        </>
-      );
+      return <MarsScenery />;
     case "forest":
       return (
         <>
-          <Trees />
+          <ForestScenery />
+          <DappledCanopy />
           <Road color="#2a2c28" width={3.6} dash="#d8d2c4" />
         </>
       );
     case "city":
-      return (
-        <>
-          <City />
-          <Road color="#1a1c24" width={4.2} />
-        </>
-      );
+      return <CityScenery />;
     case "desert":
       return (
         <>
-          <Dunes color="#d2b27a" count={6} seed={2} />
+          <DesertScenery />
           <Road color="#6a6258" width={3.8} dash="#f2ead8" />
-          <mesh position={[-16, 7.2, -20]}>
-            <sphereGeometry args={[1.6, 16, 12]} />
-            <meshBasicMaterial color="#fff6df" />
-          </mesh>
         </>
       );
     default: {
@@ -223,11 +183,7 @@ function Scenery({ kind }: { kind: SceneryKind }) {
   }
 }
 
-export function BackdropScenery({
-  backdrop,
-}: {
-  backdrop: Backdrop;
-}) {
+export function BackdropScenery({ backdrop }: { backdrop: Backdrop }) {
   if (backdrop.scenery === "none") return null;
   return (
     <group>

@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { PAINT, VEHICLES, featuresForVehicle } from "../src/studio/catalog";
+import { vehicleGlb } from "../src/studio/vehicles/assets";
 import { glassParams, paintParams } from "../src/studio/materials";
 import { useStudio } from "../src/studio/store";
 import { SHOTS, shotFor } from "../src/studio/scene/shots";
@@ -60,10 +61,17 @@ for (const id of ["model-3-heritage", "model-s-heritage"] as const) {
   assert.ok(byId(id).features.every((f) => !f.cameraOnly), `${id} features must not be camera-only`);
 }
 assert.match(byId("cybercab").marketNote ?? "", /concept/i, "Cybercab marketNote must mention concept");
+assert.match(byId("cybercab").marketNote ?? "", /CC BY/i, "Cybercab marketNote must name the pending CC BY scan");
 assert.ok(!byId("cybercab").features.some((f) => ["charge", "trunk", "suspension", "tonneau"].includes(f.id)), "Cybercab must not invent production features");
 assert.ok(!byId("cybertruck").features.some((f) => f.id === "doors"), "Cybertruck has no doors tour");
-assert.match(byId("cybertruck").marketNote ?? "", /authored/i, "Cybertruck marketNote must mention the authored study");
+assert.match(byId("cybertruck").marketNote ?? "", /CC BY/i, "Cybertruck marketNote must credit the CC BY mesh");
+assert.match(byId("cybertruck").marketNote ?? "", /Nieve5677/i, "Cybertruck marketNote must name the artist");
 assert.match(byId("cybertruck").marketNote ?? "", /illustrative/i, "Cybertruck marketNote must stay illustrative");
+assert.doesNotMatch(byId("cybertruck").marketNote ?? "", /endorsed/i, "Do not claim Tesla endorsement");
+assert.deepEqual(byId("cybertruck").parts, [], "Imported Cybertruck is not a hinge rig");
+for (const id of ["frunk", "trunk", "charge", "tonneau"] as const) {
+  assert.equal(byId("cybertruck").features.find((f) => f.id === id)?.cameraOnly, true, `Cybertruck ${id} stays a camera study`);
+}
 const paintKeys = [
   "color", "metalness", "roughness", "clearcoat", "clearcoatRoughness",
   "envMapIntensity", "sheen", "sheenRoughness", "sheenColor", "reflectivity",
@@ -326,6 +334,20 @@ for (const spec of [
   prepared.materials.forEach(m => m.dispose());
   console.log(`PASS: ${spec.id}, ${triangles.toLocaleString()} triangles, ${size.x.toFixed(2)}x${size.y.toFixed(2)}x${size.z.toFixed(2)} m`);
 }
+assert.equal(vehicleGlb("model-3"), "highland/model.glb");
+assert.equal(vehicleGlb("model-y"), "juniper/model.glb");
+assert.equal(vehicleGlb("cybertruck"), "cybertruck-import/model.glb");
+assert.equal(vehicleGlb("cybercab"), "authored/cybercab.glb", "Cybercab stays on the authored study until a CC BY GLB is downloaded");
+await fs.access("public/models/" + vehicleGlb("cybertruck"));
+await fs.access("public/models/cybertruck-import/CREDITS.md");
+const truckCredits = await fs.readFile("public/models/cybertruck-import/CREDITS.md", "utf8");
+assert.match(truckCredits, /CC BY 4\.0/);
+assert.match(truckCredits, /Nieve5677/);
+assert.doesNotMatch(truckCredits, /endorsed by Tesla/i);
+const cabCredits = await fs.readFile("public/models/cybercab-import/CREDITS.md", "utf8");
+assert.match(cabCredits, /zwir3kk/);
+assert.match(cabCredits, /CC BY 4\.0/);
+assert.match(cabCredits, /not bundled/i);
 
 
 await import("./model-imports.test");

@@ -577,9 +577,9 @@ export function Studio() {
               : s.modelId === "model-y"
                 ? "Sketchfab mesh · Juniper"
                 : s.modelId === "cybertruck"
-                  ? "Original authored 3D study · articulated panels"
+                  ? "Sketchfab mesh · Nieve5677 · CC BY 4.0"
               : s.modelId === "cybercab"
-                ? "Concept study · estimated proportions"
+                ? "Authored concept study · CC BY scan pending"
                 : "Original authored 3D asset"}
           <b> / </b>Unofficial Tesla visualization
         </span>
@@ -628,15 +628,17 @@ export function Studio() {
                   demonstration. Press Escape to return to the exterior.
                 </p>
                 <p>
-                  Highland and Juniper use licensed artist meshes. Their bodies
-                  stay closed, and those tours move the camera instead of
-                  cutting the paint. Cybertruck is an original authored
-                  stainless study with articulated panels and suspension —
-                  illustrative, not factory CAD. Cybercab is an original
-                  authored two-seat concept study,
-                  not a production specification. Paint and wheel names follow
-                  the North America 2026 Design Studio; trim availability is
-                  illustrative.
+                  Highland, Juniper, and Cybertruck use licensed artist meshes.
+                  Those bodies stay closed, and panel tours move the camera
+                  instead of cutting the paint. Cybertruck is the Nieve5677
+                  Sketchfab model under CC BY 4.0, scaled to the owner-manual
+                  length. Air suspension still raises that closed body.
+                  Cybercab is an original authored concept study used because
+                  the CC BY scan could not be downloaded without a Sketchfab
+                  account. It is not a production specification. Paint and
+                  wheel names follow the North America 2026 Design Studio;
+                  trim availability is illustrative. This project is not
+                  endorsed by Tesla.
                 </p>
                 <p>
                   Original-generation Model 3 and Model S meshes by{" "}
@@ -714,6 +716,55 @@ export function Studio() {
                     CC BY-NC 4.0
                   </a>
                   . Adapted with scale, materials and compression.
+                </p>
+                <p>
+                  Cybertruck mesh by{" "}
+                  <a
+                    href="https://sketchfab.com/niev"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Nieve5677
+                  </a>{" "}
+                  —{" "}
+                  <a
+                    href="https://sketchfab.com/3d-models/tesla-cybertruck-2025-0fe4980c8cbc441382bfb7d4cf9f092e"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Tesla Cybertruck 2025
+                  </a>
+                  , licensed{" "}
+                  <a
+                    href="https://creativecommons.org/licenses/by/4.0/"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    CC BY 4.0
+                  </a>
+                  . The higher-detail Sketcher production mesh (
+                  <a
+                    href="https://sketchfab.com/3d-models/tesla-cybertruck-587a0833e60f465090145b139f6c1bfc"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    CC BY 4.0
+                  </a>
+                  ) and the zwir3kk Cybercab scan (
+                  <a
+                    href="https://sketchfab.com/3d-models/tesla-cybercab-3d-model-45c25fd8442b45129e47be2e66449ca3"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    CC BY 4.0
+                  </a>
+                  ) need a Sketchfab account to download and are not bundled.{" "}
+                  <a
+                    href={`${import.meta.env.BASE_URL}models/cybertruck-import/CREDITS.md`}
+                  >
+                    Cybertruck credits
+                  </a>
+                  .
                 </p>
                 <p>
                   Tesla and vehicle names are trademarks of Tesla, Inc. This

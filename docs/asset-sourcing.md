@@ -6,8 +6,8 @@ Reviewed 2026-09-07, then updated after the owner uploaded Sketchfab zips. Re-se
 | --- | --- | --- |
 | Model 3 Highland | Actual GLB downloaded from a credited GitHub copy; embedded CC BY 4.0 attribution; 179,692 triangles and original textures. | Integrated. See `public/models/highland/CREDITS.md`. Spatial door/hood cuts were removed: the source is a merged export and tearing the paint is worse than a closed body. Feature tours for those panels are camera-only. |
 | Model Y Juniper | Owner uploaded BloxBloger 2025 Tesla Model Y (CC BY-NC OBJ, 307k tris, 89 objects). MTL was missing from the zip. | Integrated as `public/models/juniper/model.glb`. Static body. |
-| Cybertruck | Owner uploaded the Sketchfab "Tesla Cybertruck 2025" zip (Nieve5677, CC BY, 72.7k). Sketcher's 380k production mesh was not in the upload. | Archived at `public/models/cybertruck-import/model.glb` (static, single steel role, width squeezed to 2.21 m). **Viewer still uses the articulated authored study** so doors, frunk, bed, tonneau and charge keep working. |
-| Cybercab | Grass Grass Grass (@zwir3kk) CC BY 4.0 "Tesla Cybercab 3D Scan", 99.2k, Oct 2024 thumbnail matches the gold reveal vehicle. Download requires a Sketchfab account. Ai 3D Designs "Tesla Robo Taxi" CC BY 1.5M is login-gated and too dense for this runtime. | Viewer still uses the original authored concept study. No public GLB/GLTF mirror found. |
+| Cybertruck | Owner uploaded the Sketchfab "Tesla Cybertruck 2025" zip (Nieve5677, CC BY, 72.7k). Sketcher's 380k production mesh was not in the upload. Re-checked 2026-09-25: Sketcher download is still HTTP 401 without `SKETCHFAB_TOKEN`, and no public GLB mirror was found. | **Viewer uses** `public/models/cybertruck-import/model.glb` (static, single steel role, length 5.683 m, width about 2.21 m). Panel tours are camera studies. The authored GLB remains a fallback file and is not loaded. |
+| Cybercab | Grass Grass Grass (@zwir3kk) CC BY 4.0 "Tesla Cybercab 3D Scan", 99.2k. Download requires a Sketchfab account. Re-checked 2026-09-25: still HTTP 401, no public GLB mirror. Paid packs were not purchased. | Viewer still uses the original authored concept study. See `public/models/cybercab-import/CREDITS.md` for the exact fetch commands. Do not invent a stand-in mesh. |
 
 Sources reviewed:
 
@@ -78,4 +78,15 @@ Re-checked env, shell rc, and `.env*` — no `SKETCHFAB_TOKEN`. Official downloa
 | Poly Pizza Mobolaji | CC BY | 19,268 | Already reviewed | Stylized blockout. Not used. |
 | Commercial / scraper hosts (CGTrader, 88cars3d, freecreat, CGHub) | Royalty-free or unspecified | — | Account or paid | Raw-mesh republish in this public repo is not allowed. |
 
-Viewer still uses the articulated authored Cybertruck and Cybercab studies. Those meshes were rebuilt in this repository (closed underbody, wheel arches, lamp housings, glass and wheel faces). No new third-party download was added. The in-repo Nieve5677 import remains archived for comparison; it is static, crude, and width-squeezed. A same-session browser load of that import as the runtime truck did not produce a usable studio frame, so it does not replace the authored study. Do not treat either authored vehicle as a finished production mesh.
+## 2026-09-25
+
+Anonymous Sketchfab download for Sketcher (`587a0833e60f465090145b139f6c1bfc`, CC BY 4.0, 380,876 faces) and zwir3kk (`45c25fd8442b45129e47be2e66449ca3`, CC BY 4.0, 99,230 faces) still returns **401**. Metadata confirms both are free CC BY and `isDownloadable`. `mayDownloadThisModel` is false without a login. The viewer files are encrypted `.binz` payloads and were not decoded. No GitHub raw GLB with those uids was available. Paid CGTrader and Sketchfab Store packs were not downloaded.
+
+The viewer now loads the Nieve5677 CC BY Cybertruck that was already in `public/models/cybertruck-import/`. It is a real imported mesh, not the authored study. It is coarser than Sketcher (one steel material, wheels not separated, width about 2.21 m versus the 2.03 m body). Replace it when a token is available:
+
+```sh
+SKETCHFAB_TOKEN=... node scripts/assets/fetch-sketchfab.mjs 587a0833e60f465090145b139f6c1bfc /tmp/sketcher-cybertruck.glb
+node scripts/assets/import-presentation.mjs /tmp/sketcher-cybertruck.glb public/models/cybertruck-import/model.glb --length 5.6829
+```
+
+Cybercab stays on `public/models/authored/cybercab.glb` until the same flow writes `public/models/cybercab-import/model.glb` and `vehicleGlb` is pointed at it. The authored Cybertruck file is no longer on the runtime path. This project is not endorsed by Tesla.

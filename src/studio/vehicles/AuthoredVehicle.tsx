@@ -5,6 +5,7 @@ import * as THREE from "three";
 import type { Interior, Paint, Variant, PartId } from "../catalog";
 import { paintParams } from "../materials";
 import { useStudio } from "../store";
+import { usesImportedPresentation, vehicleGlb } from "./assets";
 import { prepareHighland } from "./highland";
 import { prepareImported } from "./imported";
 import { LampBeams } from "./LampBeams";
@@ -54,12 +55,8 @@ export function AuthoredVehicle({
   variant: Variant;
 }) {
   const highland = model === "model-3";
-  const imported = model === "model-y";
-  const asset = highland
-    ? "highland/model.glb"
-    : imported
-      ? "juniper/model.glb"
-      : `authored/${model}.glb`;
+  const imported = usesImportedPresentation(model);
+  const asset = vehicleGlb(model);
   const { scene: source } = useGLTF(
     `${import.meta.env.BASE_URL}models/${asset}`,
     false,

@@ -8,10 +8,10 @@ An independent, noncommercial browser vehicle studio with configurable finishes,
 
 - Detailed artist-created original-generation Model 3 and Model S meshes, hosted in this repository.
 - Artist-created Highland with original textures, a static body, and a paint finish that colors the main body shell.
-- Juniper uses BloxBloger's Sketchfab 2025 Model Y (CC BY-NC, 307k triangles). Juniper keeps a static body. Cybertruck and Cybercab still use original authored studies with articulated panels; higher-fidelity CC BY production meshes exist on Sketchfab but require a login to download. See [asset sourcing](docs/asset-sourcing.md).
+- Juniper uses BloxBloger's Sketchfab 2025 Model Y (CC BY-NC, 307k triangles). Juniper keeps a static body. Cybertruck uses Nieve5677's Sketchfab 2025 mesh (CC BY 4.0, about 73k triangles), also a closed body. The higher-detail Sketcher Cybertruck and the zwir3kk Cybercab scan are CC BY but still need a Sketchfab login; Cybercab stays on the authored concept study until that file is downloaded. See [asset sourcing](docs/asset-sourcing.md).
 - Model and trim selection, exterior colors, interior finishes, and trim-specific sport hardware.
 - Guided tours with eased camera moves followed by articulated demonstrations. Individual features can be selected, revisited, or exited.
-- Background switcher for the original studio, daylight and midnight stages plus Mars, a forest backroad, a night city and a desert highway. Outdoor scenes share one procedural sky, ground and light rig. Reflection maps are generated in Three.js at a web-sized resolution. No remote HDRIs.
+- Background switcher for the original studio, daylight and midnight stages plus Mars, a forest backroad, a night city and a desert highway. Outdoor scenes use a procedural sky, displaced dunes or city blocks, and a light rig tuned per backdrop. The forest adds instanced trees, god-ray shafts, fireflies, birds and a deer. Reflection maps are generated in Three.js at a web-sized resolution. No remote HDRIs.
 - Touch orbit and pinch zoom, collapsible mobile controls, adaptive rendering quality, loading/error states, keyboard-accessible controls and a help/credits dialog.
 
 ## Controls
@@ -20,7 +20,7 @@ Drag to orbit; scroll or pinch to zoom. Select **Explore features** for an indiv
 
 ## Fidelity and scope
 
-This is a real-time WebGL showcase, **not an Unreal Engine renderer or a factory CAD configurator**. Highland uses a licensed artist mesh with 179,692 preserved triangles, original textures and approximately 4 MB of compressed geometry. Its body is kept intact: door, hood and liftgate tours are camera studies because the source is a merged export, not a hinge rig. Juniper uses BloxBloger's CC BY-NC Sketchfab mesh (307k triangles, ~5 MB compressed). Juniper keeps a closed body. Cybertruck and Cybercab use original authored studies with working articulation. The archived Cybertruck import has a single steel material role across its parts and is not used by the viewer. Fine surface fidelity and physically accurate textures still limit photorealism.
+This is a real-time WebGL showcase, **not an Unreal Engine renderer or a factory CAD configurator**. Highland uses a licensed artist mesh with 179,692 preserved triangles, original textures and approximately 4 MB of compressed geometry. Its body is kept intact: door, hood and liftgate tours are camera studies because the source is a merged export, not a hinge rig. Juniper uses BloxBloger's CC BY-NC Sketchfab mesh (307k triangles, ~5 MB compressed). Juniper keeps a closed body. Cybertruck uses the Nieve5677 CC BY mesh (about 73k triangles, one stainless role, length 5.683 m). Its panels are camera studies; suspension still lifts the body. Cybercab remains an authored concept study because the CC BY scan is login-gated. Fine surface fidelity and physically accurate textures still limit photorealism. This is not a Tesla-endorsed project.
 
 Heritage vehicles retain their actual older-generation labels. They are not passed off as Highland, Juniper or Plaid. Trim treatments, colors and interior selections are illustrative rather than a current Tesla ordering guide. No live pricing, range or performance figures are fabricated.
 

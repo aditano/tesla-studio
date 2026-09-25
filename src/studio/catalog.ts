@@ -369,7 +369,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Cybertruck",
     tag: "Exoskeleton",
     marketNote:
-      "Original authored 3D study with articulated panels and suspension. Principal dimensions follow the owner manual; trim details are illustrative, not factory CAD.",
+      "Cybertruck mesh by Nieve5677 on Sketchfab, CC BY 4.0. Length follows the owner manual (5.6829 m); the export is wider than the 2.03 m body, so the studio keeps it near 2.2 m. The body stays closed and panel tours are camera studies. Illustrative finishes, not factory CAD, and not a Tesla product.",
     variants: [
       {
         id: "awd",
@@ -407,36 +407,37 @@ export const VEHICLES: VehicleDef[] = [
         id: "tonneau",
         label: "Tonneau",
         hint: "Power tonneau cover",
+        cameraOnly: true,
       },
       {
         id: "frunk",
         label: "Frunk",
         hint: "Front vault",
+        cameraOnly: true,
       },
       {
         id: "trunk",
         label: "Bed",
         hint: "Stainless vault",
+        cameraOnly: true,
       },
       { id: "headlights", label: "Headlights", hint: "Matrix projectors" },
       {
         id: "charge",
         label: "Charge port",
         hint: "Bed-side NACS inlet",
+        cameraOnly: true,
       },
       { id: "interior", label: "Inside the cabin", hint: "Yoke and vault interior" },
     ],
-    parts: [
-      "door-fl", "door-fr", "door-rl", "door-rr",
-      "frunk", "trunk", "charge", "tonneau",
-    ],
+    parts: [],
   },
   {
     id: "cybercab",
     name: "Cybercab",
     tag: "Robotaxi",
     marketNote:
-      "Concept two-seater. Proportions estimated from reveal imagery. Illustrative study — not a production specification.",
+      "Concept two-seater. The viewer uses the original authored study because the CC BY 4.0 zwir3kk scan still needs a Sketchfab login to download. Proportions are estimates, not a production specification.",
     variants: [
       {
         id: "cab",
