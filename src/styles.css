@@ -727,6 +727,44 @@ strong {
 .environment-desert .studio-header {
   filter: drop-shadow(0 1px 6px #27334088);
 }
+.environment-daylight :is(.vehicle-title, .model-nav, .stage-tools),
+.environment-desert :is(.vehicle-title, .model-nav, .stage-tools),
+.environment-mars :is(.vehicle-title, .model-nav, .stage-tools) {
+  text-shadow: 0 1px 2px #0b0f15cc, 0 0 14px #0b0f1599;
+}
+/* The city facade is bright right behind the header; darken that band. */
+.environment-night-city .vehicle-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 280px;
+  background: linear-gradient(#070814f0, #070814b3 45%, #07081400);
+  pointer-events: none;
+  z-index: 1;
+}
+/* The orbit hint sits on the ground plane, which is bright in outdoor day
+   scenes; give it a small pill of its own. */
+.environment-daylight .orbit-hint,
+.environment-desert .orbit-hint,
+.environment-mars .orbit-hint {
+  background: #0f141b8c;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #e8edf3;
+}
+/* Bright backdrops wash out the white header and title text. A soft top
+   scrim keeps it legible without boxing the car in. */
+.environment-daylight .vehicle-stage::before,
+.environment-desert .vehicle-stage::before,
+.environment-mars .vehicle-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 470px;
+  background: linear-gradient(#0f141bcc, #0f141b8c 40%, #0f141b33 70%, #0f141b00);
+  pointer-events: none;
+  z-index: 1;
+}
 @media (min-width: 1500px) {
   .vehicle-stage {
     right: 340px;

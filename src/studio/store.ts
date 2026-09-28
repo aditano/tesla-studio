@@ -133,7 +133,8 @@ export const useStudio = create<StudioState>((set, get) => ({
     }),
 }));
 
-if (typeof window !== "undefined") {
+// Debug handle for the dev server only; production bundles don't expose state.
+if (typeof window !== "undefined" && import.meta.env.DEV) {
   (window as unknown as { __teslaStudio: typeof useStudio }).__teslaStudio =
     useStudio;
 }

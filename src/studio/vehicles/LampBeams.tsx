@@ -4,102 +4,87 @@ import * as THREE from "three";
 import { backdropById } from "../scene/backdrops";
 import { useStudio } from "../store";
 
-type Chip = {
-  position: [number, number, number];
-  size: [number, number];
-  /** Yaw so the element sits on a curved fascia instead of a flat slab. */
-  yaw?: number;
+/** A lamp drawn as a continuous emissive ribbon. `path` is the front-view
+ * centreline (x, y) of one side; it is mirrored across x = 0 unless `centre`
+ * is set. Each sample is snapped onto the real lamp surface by a ray fired
+ * rearward, so the ribbon hugs the curved fascia instead of floating in front
+ * of it. */
+type Strip = {
+  path: [number, number][];
+  height: number;
+  /** Light-bar elements follow the light-bar toggle and pulse in its demo. */
   bar?: boolean;
-  round?: boolean;
+  /** Path already spans both sides (a full-width blade). */
+  centre?: boolean;
 };
+
+type Projector = { x: number; y: number; radius: number };
 
 type Rig = {
   /** Most-forward body station. The pool starts here and runs down the road. */
   noseZ: number;
   spots: [number, number, number][];
-  chips: Chip[];
+  strips: Strip[];
+  projectors: Projector[];
+  /** Material names the ribbons snap to. Falls back to the whole body. */
+  surface?: RegExp;
 };
 
-function curvedLamp(
-  side: number,
-  samples: { t: number; x: number; y: number; z: number }[],
-  size: [number, number],
-): Chip[] {
-  return samples.map((sample, index) => {
-    const next = samples[Math.min(samples.length - 1, index + 1)];
-    const yaw = Math.atan2(next.z - sample.z, next.x - sample.x);
-    return {
-      position: [side * sample.x, sample.y, sample.z],
-      size,
-      yaw: side < 0 ? Math.PI - yaw : yaw,
-    };
-  });
-}
-
-/** Highland lamps are separate curved openings. Juniper's export is a stack of
- * fascia-deep blocks, so only a thin blade and the outer projectors are drawn. */
-const highlandSamples = [0, 1, 2, 3, 4, 5, 6].map((i) => {
-  const t = i / 6;
-  return {
-    t,
-    x: 0.46 + t * 0.36,
-    y: 0.662 - t * 0.028,
-    z: -2.205 + t * t * 0.145,
-  };
-});
-
-function juniperBar(): Chip[] {
-  const chips: Chip[] = [];
-  const count = 26;
-  for (let i = 0; i < count; i++) {
+const curve = (
+  from: [number, number],
+  to: [number, number],
+  count: number,
+  ease = (t: number) => t,
+): [number, number][] =>
+  Array.from({ length: count }, (_, i) => {
     const t = i / (count - 1);
-    const x = THREE.MathUtils.lerp(-0.8, 0.8, t);
-    const arch = 1 - Math.abs(t - 0.5) * 2;
-    chips.push({
-      position: [x, 0.808 + arch * 0.012, -2.332],
-      size: [0.046, 0.016],
-      bar: true,
-    });
-  }
-  for (const side of [-1, 1] as const) {
-    for (let i = 0; i < 4; i++) {
-      const t = i / 3;
-      chips.push({
-        position: [side * (0.62 + t * 0.2), 0.642, -2.272 + t * 0.02],
-        size: [0.04, 0.026],
-        yaw: side * t * 0.22,
-      });
-    }
-    chips.push({
-      position: [side * 0.7, 0.628, -2.268],
-      size: [0.07, 0.04],
-      round: true,
-    });
-  }
-  return chips;
-}
+    const e = ease(t);
+    return [
+      THREE.MathUtils.lerp(from[0], to[0], t),
+      THREE.MathUtils.lerp(from[1], to[1], e),
+    ];
+  });
 
+/** Stations measured on each runtime mesh by raycasting its lamp housings. */
 const RIGS: Record<string, Rig> = {
+  // Highland: slim DRL blade along the upper lens edge, rising outboard.
   "model-3": {
     noseZ: -2.36,
     spots: [
       [-0.62, 0.64, -2.16],
       [0.62, 0.64, -2.16],
     ],
-    chips: [
-      ...curvedLamp(-1, highlandSamples, [0.04, 0.015]),
-      ...curvedLamp(1, highlandSamples, [0.04, 0.015]),
-      { position: [-0.5, 0.628, -2.2], size: [0.055, 0.04], round: true },
-      { position: [0.5, 0.628, -2.2], size: [0.055, 0.04], round: true },
+    // Upper lens edge rises from y 0.64 inboard to 0.70 at the outer tip.
+    strips: [
+      {
+        path: curve([0.5, 0.626], [0.83, 0.688], 18, (t) => Math.sin((t * Math.PI) / 2)),
+        height: 0.01,
+      },
     ],
+    projectors: [{ x: 0.63, y: 0.618, radius: 0.017 }],
+    surface: /lamp_lens|headlight_led/,
   },
+  // Juniper: full-width blade on the upper housing band, projectors below.
   "model-y": {
     noseZ: -2.4,
     spots: [
       [-0.72, 0.64, -2.26],
       [0.72, 0.64, -2.26],
     ],
-    chips: juniperBar(),
+    strips: [
+      {
+        path: curve([-0.84, 0.8], [0.84, 0.8], 57, (t) => t).map(
+          ([x]) => [x, 0.756 + Math.max(0, Math.abs(x) - 0.48) * 0.12] as [number, number],
+        ),
+        height: 0.012,
+        bar: true,
+        centre: true,
+      },
+      // Lower lamp: a strip on the upper half of the housing, projector below.
+      { path: curve([0.64, 0.657], [0.86, 0.66], 10), height: 0.011 },
+    ],
+    projectors: [{ x: 0.72, y: 0.628, radius: 0.015 }],
+    surface: /lamp_housing|signature_led|headlight_led/,
   },
   "model-3-heritage": {
     noseZ: -2.34,
@@ -107,7 +92,8 @@ const RIGS: Record<string, Rig> = {
       [-0.62, 0.64, -2.3],
       [0.62, 0.64, -2.3],
     ],
-    chips: [],
+    strips: [],
+    projectors: [],
   },
   "model-s-heritage": {
     noseZ: -2.48,
@@ -115,25 +101,145 @@ const RIGS: Record<string, Rig> = {
       [-0.72, 0.66, -2.42],
       [0.72, 0.66, -2.42],
     ],
-    chips: [],
+    strips: [],
+    projectors: [],
   },
+  // The imported Cybertruck is one steel shell with no lamp geometry. Draw the
+  // full-width blade under the hood edge; its outer ends are the headlamps.
   cybertruck: {
     noseZ: -2.84,
     spots: [
-      [-0.55, 0.99, -2.86],
-      [0.55, 0.99, -2.86],
+      [-0.55, 1.12, -2.86],
+      [0.55, 1.12, -2.86],
     ],
-    chips: [],
+    strips: [
+      // The front face spans |x| < 0.7 below the hood edge (y 1.0 to 1.18).
+      { path: curve([-0.5, 1.166], [0.5, 1.166], 26), height: 0.016, bar: true, centre: true },
+      { path: curve([0.5, 1.166], [0.7, 1.166], 8), height: 0.02 },
+    ],
+    projectors: [],
   },
+  // The authored Cybercab carries its own emissive light bar and lamps.
   cybercab: {
     noseZ: -2.06,
     spots: [
       [-0.42, 0.64, -2.04],
       [0.42, 0.64, -2.04],
     ],
-    chips: [],
+    strips: [],
+    projectors: [],
   },
 };
+
+type Hit = { point: THREE.Vector3; normal: THREE.Vector3 };
+
+/** Ray-cast rearward onto the body, returning body-local points and normals. */
+export function makeSurfaceSnap(body: THREE.Object3D, surface?: RegExp) {
+  {
+    body.updateWorldMatrix(true, true);
+    const all: THREE.Mesh[] = [];
+    body.traverse((o) => {
+      if (!(o instanceof THREE.Mesh) || o.userData.hitVolume) return;
+      if (o.userData.presentationDetail) return;
+      for (let p: THREE.Object3D | null = o; p; p = p.parent) if (!p.visible) return;
+      o.geometry.computeBoundingBox();
+      const box = o.geometry.boundingBox!.clone().applyMatrix4(o.matrixWorld);
+      // Only front-facing meshes can host a lamp; skip the rest for speed.
+      if (box.min.z > -1.2) return;
+      all.push(o);
+    });
+    const named = surface
+      ? all.filter((m) =>
+          (Array.isArray(m.material) ? m.material : [m.material]).some((x) =>
+            surface.test(x.name),
+          ),
+        )
+      : [];
+    const targets = named.length ? named : all;
+    const ray = new THREE.Raycaster();
+    const inverse = body.matrixWorld.clone().invert();
+    const normalMatrix = new THREE.Matrix3();
+    // Lens meshes are often single-sided with mirrored normals on one side of
+    // the car. Test both faces so the ray stops at the outer lens instead of
+    // passing through to housing internals.
+    const sides = new Map<THREE.Material, THREE.Side>();
+    for (const mesh of targets)
+      for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material])
+        sides.set(m, m.side);
+    return (x: number, y: number): Hit | null => {
+      const origin = new THREE.Vector3(x, y, -12).applyMatrix4(body.matrixWorld);
+      ray.set(origin, new THREE.Vector3(0, 0, 1).transformDirection(body.matrixWorld));
+      sides.forEach((_, m) => (m.side = THREE.DoubleSide));
+      const hit = ray.intersectObjects(targets, false)[0];
+      sides.forEach((side, m) => (m.side = side));
+      if (!hit?.face) return null;
+      normalMatrix.getNormalMatrix(hit.object.matrixWorld);
+      const normal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+      // Double-sided exports can report the inward face; lamps face forward.
+      if (normal.z > 0) normal.negate();
+      return {
+        point: hit.point.clone().applyMatrix4(inverse),
+        normal: normal.transformDirection(inverse),
+      };
+    };
+  }
+}
+
+function useSurfaceSnap(body: THREE.Object3D | undefined, surface?: RegExp) {
+  return useMemo(() => (body ? makeSurfaceSnap(body, surface) : null), [body, surface]);
+}
+
+/** Drop samples that jump in depth relative to both neighbours (a ray that
+ * slipped past the lens edge), then ease the depth so the ribbon is smooth. */
+function settle(hits: (Hit | null)[]): (Hit | null)[] {
+  const out = hits.map((hit, i) => {
+    if (!hit) return null;
+    const near = [hits[i - 1], hits[i + 1]].filter((h): h is Hit => !!h);
+    if (!near.length) return hit;
+    const jump = Math.min(...near.map((h) => Math.abs(h.point.z - hit.point.z)));
+    return jump > 0.035 ? null : hit;
+  });
+  return out.map((hit, i) => {
+    if (!hit) return null;
+    const near = [out[i - 1], hit, out[i + 1]].filter((h): h is Hit => !!h);
+    const point = hit.point.clone();
+    point.z = near.reduce((sum, h) => sum + h.point.z, 0) / near.length;
+    return { point, normal: hit.normal };
+  });
+}
+
+/** Build one ribbon from snapped samples; gaps in the housing split it. */
+function ribbon(samples: (Hit | null)[], height: number) {
+  const hits = settle(samples);
+  const positions: number[] = [];
+  const indices: number[] = [];
+  const up = new THREE.Vector3();
+  let previous = -1;
+  hits.forEach((hit, i) => {
+    if (!hit) {
+      previous = -1;
+      return;
+    }
+    // Keep the ribbon vertical in the fascia plane and lift it off the lens.
+    up.set(0, 1, 0).addScaledVector(hit.normal, -hit.normal.y).normalize();
+    const base = hit.point.clone().addScaledVector(hit.normal, 0.003);
+    const top = base.clone().addScaledVector(up, height / 2);
+    const bottom = base.clone().addScaledVector(up, -height / 2);
+    const at = positions.length / 3;
+    positions.push(...top.toArray(), ...bottom.toArray());
+    if (previous >= 0 && i === previous + 1) {
+      const a = at - 2;
+      indices.push(a, a + 1, at, at, a + 1, at + 1);
+    }
+    previous = i;
+  });
+  if (!indices.length) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 function usePoolMap() {
   const texture = useMemo(() => {
@@ -208,16 +314,10 @@ function Spot({
   );
 }
 
-function Pool({
-  noseZ,
-  opacity,
-  map,
-}: {
-  noseZ: number;
-  opacity: number;
-  map: THREE.Texture;
-}) {
-  const geometry = useMemo(() => {
+/** Trapezoid on the road ahead of the nose, wide end away from the car. The
+ * winding is counter-clockwise seen from above, so the face points up. */
+export function poolGeometry(noseZ: number) {
+  {
     const length = 5.2;
     const near = noseZ - 0.04;
     const far = near - length;
@@ -236,9 +336,22 @@ function Pool({
       "uv",
       new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2),
     );
-    geo.setIndex([0, 2, 1, 1, 2, 3]);
+    geo.setIndex([0, 1, 2, 1, 3, 2]);
+    geo.computeVertexNormals();
     return geo;
-  }, [noseZ]);
+  }
+}
+
+function Pool({
+  noseZ,
+  opacity,
+  map,
+}: {
+  noseZ: number;
+  opacity: number;
+  map: THREE.Texture;
+}) {
+  const geometry = useMemo(() => poolGeometry(noseZ), [noseZ]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   if (opacity <= 0) return null;
   return (
@@ -255,33 +368,38 @@ function Pool({
   );
 }
 
-function ChipFace({ chip, lit }: { chip: Chip; lit: boolean }) {
+/** Emissive lamp surfaces. Light-bar elements pulse during the light bar demo
+ * and settle back to a steady level afterwards. */
+function LampGlow({
+  geometry,
+  lit,
+  bar,
+}: {
+  geometry: THREE.BufferGeometry;
+  lit: boolean;
+  bar: boolean;
+}) {
   const glow = useRef<THREE.MeshStandardMaterial>(null);
-  const pulse = useStudio((s) => s.demoFeature === "lightbar" && !!chip.bar);
+  const pulse = useStudio((s) => s.demoFeature === "lightbar" && bar);
   useFrame(({ clock }) => {
     const material = glow.current;
     if (!material) return;
-    const base = lit ? (chip.bar ? 1.35 : 1.7) : 0;
+    const base = bar ? 2 : 2.4;
     material.emissiveIntensity = pulse
       ? base + Math.sin(clock.elapsedTime * 3) * 0.45
       : base;
   });
   if (!lit) return null;
-  const yaw = (chip.yaw ?? 0) + Math.PI;
   return (
-    <mesh position={chip.position} rotation={[0, yaw, 0]}>
-      {chip.round ? (
-        <circleGeometry args={[chip.size[0] * 0.5, 18]} />
-      ) : (
-        <planeGeometry args={chip.size} />
-      )}
+    <mesh geometry={geometry} renderOrder={3}>
       <meshStandardMaterial
         ref={glow}
         color="#f7fbff"
         emissive="#f4f8ff"
-        emissiveIntensity={lit ? 1.55 : 0}
+        emissiveIntensity={bar ? 2 : 2.4}
         roughness={0.42}
         metalness={0}
+        side={THREE.DoubleSide}
         toneMapped
         polygonOffset
         polygonOffsetFactor={-2}
@@ -291,21 +409,105 @@ function ChipFace({ chip, lit }: { chip: Chip; lit: boolean }) {
   );
 }
 
-export function LampBeams({ model, on }: { model: string; on: boolean }) {
+function mirror(path: [number, number][], centre?: boolean): [number, number][][] {
+  if (centre) return [path];
+  return [path, path.map(([x, y]) => [-x, y] as [number, number])];
+}
+
+export type LampPiece = {
+  geometry: THREE.BufferGeometry;
+  bar: boolean;
+  /** -1 driver side (x < 0), 1 passenger side, 0 spans the centre line. */
+  side: -1 | 0 | 1;
+};
+
+type Snap = (x: number, y: number) => Hit | null;
+
+/** Emissive lamp geometry for a model, snapped onto its body. */
+export function buildLamps(model: string, snap: Snap): LampPiece[] {
+  const rig = RIGS[model] ?? RIGS["model-3"];
+  const out: LampPiece[] = [];
+  for (const strip of rig.strips)
+    mirror(strip.path, strip.centre).forEach((path, index) => {
+      const geometry = ribbon(path.map(([x, y]) => snap(x, y)), strip.height);
+      const side = strip.centre ? 0 : index === 0 ? 1 : -1;
+      if (geometry) out.push({ geometry, bar: !!strip.bar, side });
+    });
+  // Projectors are drawn as a disc that is conformed to the lens: each rim
+  // vertex is snapped individually, so on a raked lens the disc wraps the
+  // surface instead of standing out of it at an angle.
+  for (const p of rig.projectors)
+    for (const side of [1, -1] as const) {
+      const centre = snap(side * p.x, p.y);
+      if (!centre) continue;
+      const segments = 24;
+      const positions: number[] = [];
+      const indices: number[] = [];
+      const lift = (hit: Hit) => hit.point.clone().addScaledVector(hit.normal, 0.004);
+      positions.push(...lift(centre).toArray());
+      let rim = 0;
+      for (let i = 0; i < segments; i += 1) {
+        const a = (i / segments) * Math.PI * 2;
+        const hit = snap(side * p.x + Math.cos(a) * p.radius, p.y + Math.sin(a) * p.radius);
+        // Keep the disc whole: a rim sample that misses the lens reuses the
+        // centre depth so the outline never folds back on itself.
+        // A rim ray that slips past the lens onto a deeper housing face would
+        // fold the disc back on itself; clamp its depth near the centre.
+        const fallback = lift(centre).z;
+        const point = hit ? lift(hit) : new THREE.Vector3(side * p.x + Math.cos(a) * p.radius, p.y + Math.sin(a) * p.radius, fallback);
+        if (Math.abs(point.z - fallback) > p.radius * 0.9) point.z = fallback;
+        positions.push(...point.toArray());
+        rim += 1;
+      }
+      for (let i = 0; i < rim; i += 1) indices.push(0, 1 + i, 1 + ((i + 1) % rim));
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+      out.push({ geometry, bar: false, side });
+    }
+  return out;
+}
+
+/** Headlight rig: emissive lamp ribbons snapped to the body, road spots and a
+ * soft ground pool. `body` is the sprung body group; the ribbons follow it so
+ * they stay attached when ride height or suspension moves the shell. */
+export function LampBeams({
+  model,
+  on,
+  body,
+}: {
+  model: string;
+  on: boolean;
+  body?: THREE.Object3D;
+}) {
   const environment = useStudio((s) => s.environment);
   const lightBar = useStudio((s) => s.lightBarOn);
   const backdrop = backdropById(environment);
   const pool = usePoolMap();
   const rig = RIGS[model] ?? RIGS["model-3"];
+  const snap = useSurfaceSnap(body, rig.surface);
+  const lamps = useMemo(() => (snap ? buildLamps(model, snap) : []), [snap, model]);
+  useEffect(() => () => lamps.forEach((l) => l.geometry.dispose()), [lamps]);
+  const follow = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const g = follow.current;
+    if (!g || !body) return;
+    g.position.copy(body.position);
+    g.quaternion.copy(body.quaternion);
+  });
   return (
     <group>
-      {rig.chips.map((chip, index) => (
-        <ChipFace
-          key={`${chip.position.join(",")}-${index}`}
-          chip={chip}
-          lit={chip.bar ? on && lightBar : on}
-        />
-      ))}
+      <group ref={follow}>
+        {lamps.map((lamp, index) => (
+          <LampGlow
+            key={index}
+            geometry={lamp.geometry}
+            bar={lamp.bar}
+            lit={lamp.bar ? on && lightBar : on}
+          />
+        ))}
+      </group>
       {rig.spots.map((position, index) => (
         <Spot
           key={`spot-${index}`}

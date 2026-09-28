@@ -21,13 +21,18 @@ import { useStudio } from "../store";
 import { ActiveVehicle } from "../vehicles/ActiveVehicle";
 import { backdropById, type Backdrop } from "./backdrops";
 import { BackdropScenery } from "./scenery";
+import { StudioStage } from "./stage";
 
 import { frameShot, minOrbitDistance } from "./shots";
 import { prefersHighQuality } from "./quality";
 
 function CinematicControls() {
   const controls = useRef<OrbitControlsImpl>(null);
-  const { camera, size } = useThree();
+  const camera = useThree((s) => s.camera);
+  const scene = useThree((s) => s.scene);
+  // Only a phone/desktop breakpoint change should re-frame the shot. Plain
+  // resizes must not yank the camera away from where the user orbited it.
+  const narrow = useThree((s) => s.size.width < 768);
   const feature = useStudio((s) => s.feature);
   const revision = useStudio((s) => s.cameraRevision);
   const model = useStudio((s) => s.modelId);
@@ -42,9 +47,9 @@ function CinematicControls() {
   } | null>(null);
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera;
-    cam.fov = size.width < 768 ? 42 : 32;
+    cam.fov = narrow ? 42 : 32;
     cam.updateProjectionMatrix();
-    const framed = frameShot(model, feature ?? "overview", size.width);
+    const framed = frameShot(model, feature ?? "overview", narrow ? 390 : 1024);
     const target = new THREE.Vector3(...framed.target);
     const end = new THREE.Vector3(...framed.position);
     const reduced = window.matchMedia(
@@ -58,7 +63,26 @@ function CinematicControls() {
       elapsed: 0,
       duration: reduced ? 0 : 1.65,
     };
-  }, [feature, revision, model, camera, size.width]);
+  }, [feature, revision, model, camera, narrow]);
+  useEffect(() => {
+    // Dev-only hook so scripted screenshots can frame arbitrary angles.
+    if (!import.meta.env.DEV) return;
+    const w = window as unknown as {
+      __teslaCam?: (p: number[], t: number[]) => void;
+      __teslaScene?: THREE.Scene;
+    };
+    w.__teslaScene = scene;
+    w.__teslaCam = (p, t) => {
+      flight.current = null;
+      camera.position.set(p[0], p[1], p[2]);
+      controls.current?.target.set(t[0], t[1], t[2]);
+      controls.current?.update();
+    };
+    return () => {
+      delete w.__teslaCam;
+      delete w.__teslaScene;
+    };
+  }, [camera, scene]);
   useFrame((_, delta) => {
     const f = flight.current,
       c = controls.current;
@@ -83,7 +107,7 @@ function CinematicControls() {
       dampingFactor={0.08}
       autoRotate={autoRotate && !feature}
       autoRotateSpeed={0.45}
-      minDistance={minOrbitDistance(model, feature, size.width)}
+      minDistance={minOrbitDistance(model, feature, narrow ? 390 : 1024)}
       maxDistance={18}
       minPolarAngle={0.12}
       maxPolarAngle={Math.PI / 2 - 0.04}
@@ -108,7 +132,8 @@ function ToneMap() {
     gl.toneMapping = THREE.ACESFilmicToneMapping;
     gl.toneMappingExposure = backdrop.exposure;
     gl.shadowMap.enabled = true;
-    gl.shadowMap.type = THREE.PCFSoftShadowMap;
+    // three r18x deprecated PCFSoftShadowMap and downgrades it with a warning.
+    gl.shadowMap.type = THREE.PCFShadowMap;
   }, [gl, backdrop.exposure]);
   return null;
 }
@@ -123,7 +148,7 @@ function StudioEnvironment({
     <>
       <Lightformer
         form="rect"
-        intensity={day ? 1.7 : night ? 0.85 : 0.55}
+        intensity={day ? 1.15 : night ? 0.85 : 0.55}
         position={[0, 9.2, 0]}
         rotation={[Math.PI / 2, 0, 0]}
         scale={day ? [28, 20, 1] : [22, 16, 1]}
@@ -163,7 +188,7 @@ function StudioEnvironment({
       />
       <Lightformer
         form="rect"
-        intensity={day ? 1.55 : night ? 0.85 : 0.75}
+        intensity={day ? 1.1 : night ? 0.85 : 0.75}
         position={[0, 3.6, 10.5]}
         rotation={[0, Math.PI, 0]}
         scale={[14, 5, 1]}
@@ -171,7 +196,7 @@ function StudioEnvironment({
       />
       <Lightformer
         form="rect"
-        intensity={day ? 1.25 : night ? 1.05 : 0.65}
+        intensity={day ? 0.9 : night ? 1.05 : 0.65}
         position={[0, 3.2, -10.8]}
         scale={[12, 4.6, 1]}
         color="#ffffff"
@@ -201,12 +226,15 @@ function StudioEnvironment({
 function OutdoorEnvironment({ backdrop }: { backdrop: Backdrop }) {
   return (
     <>
+      {/* Sized to stay above ~40 degrees elevation: a wider panel reaches the
+          hood's mirror direction from the overview camera and blows out a
+          hotspot on the clearcoat. */}
       <Lightformer
         form="rect"
-        intensity={backdrop.day ? 2.2 : 0.7}
+        intensity={backdrop.day ? 2.6 : 0.85}
         position={[0, 10, 0]}
         rotation={[Math.PI / 2, 0, 0]}
-        scale={[30, 22, 1]}
+        scale={[16, 12, 1]}
         color={backdrop.hemiSky}
       />
       <Lightformer
@@ -216,11 +244,15 @@ function OutdoorEnvironment({ backdrop }: { backdrop: Backdrop }) {
         scale={[10, 5, 1]}
         color={backdrop.keyColor}
       />
+      {/* Kept low on the horizon: at fill-light height this panel sits in the
+          hood's mirror direction from the overview camera and blows out a
+          white hotspot on the clearcoat. */}
       <Lightformer
         form="rect"
-        intensity={0.55}
-        position={backdrop.fillPosition}
-        scale={[8, 4, 1]}
+        intensity={0.32}
+        position={[backdrop.fillPosition[0], 1.1, backdrop.fillPosition[2]]}
+        target={[0, 0.6, 0]}
+        scale={[8, 2.2, 1]}
         color={backdrop.fillColor}
       />
       <Lightformer
@@ -267,8 +299,16 @@ function Lighting({ high }: { high: boolean }) {
         intensity={backdrop.fillIntensity}
         color={backdrop.fillColor}
       />
+      {backdrop.rimIntensity > 0 && (
+        <directionalLight
+          position={backdrop.rimPosition}
+          intensity={backdrop.rimIntensity}
+          color={backdrop.rimColor}
+        />
+      )}
       <Environment
         resolution={high ? (backdrop.mirror ? 1024 : 512) : 256}
+        environmentIntensity={backdrop.envIntensity}
         frames={1}
         key={backdrop.id}
       >
@@ -278,7 +318,11 @@ function Lighting({ high }: { high: boolean }) {
           <OutdoorEnvironment backdrop={backdrop} />
         )}
       </Environment>
-      {backdrop.scenery !== "none" && <BackdropScenery backdrop={backdrop} />}
+      {backdrop.scenery !== "none" ? (
+        <BackdropScenery backdrop={backdrop} />
+      ) : (
+        <StudioStage backdrop={backdrop} />
+      )}
     </>
   );
 }
@@ -441,7 +485,9 @@ function Floor({ high }: { high: boolean }) {
         />
       </mesh>
       <ContactShadows
-        position={[0, 0.002, 0]}
+        // Outdoor terrain and roads rise to about 0.03 under the car; a
+        // shadow below them is hidden and the car looks like it floats.
+        position={[0, backdrop.mirror ? 0.002 : 0.034, 0]}
         opacity={night ? 0.68 : day ? 0.4 : 0.52}
         scale={48}
         blur={2.35}
@@ -480,7 +526,9 @@ function PostFX({ high }: { high: boolean }) {
   const backdrop = useBackdrop();
   if (!high) return null;
   return (
-    <EffectComposer multisampling={0} enableNormalPass={false}>
+    // The composer renders offscreen, which discards the canvas MSAA. Without
+    // it thin specular edges (panel creases, trim) sparkle and stair-step.
+    <EffectComposer multisampling={4} enableNormalPass={false}>
       <N8AO aoRadius={0.24} intensity={backdrop.ao} halfRes />
       <Bloom
         luminanceThreshold={backdrop.bloomThreshold}
@@ -508,7 +556,7 @@ export function VehicleCanvas() {
   const high = prefersHighQuality(quality, narrow ? 767 : 1024);
   return (
     <Canvas
-      shadows
+      shadows="percentage"
       dpr={[1, high ? 1.75 : 1.25]}
       camera={{ position: [4.35, 1.58, -5.45], fov: 32, near: 0.035, far: 400 }}
       gl={{
@@ -517,7 +565,6 @@ export function VehicleCanvas() {
         toneMappingExposure: 1,
         alpha: false,
         powerPreference: "high-performance",
-        preserveDrawingBuffer: true,
       }}
       fallback={
         <div className="render-error">

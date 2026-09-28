@@ -14,6 +14,7 @@ import {
   ChevronRight,
   CircleHelp,
   Maximize,
+  Minimize,
   Pause,
   Play,
   RotateCcw,
@@ -35,6 +36,9 @@ class RenderBoundary extends Component<
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
+  }
+  componentDidCatch(error: unknown) {
+    console.error("Tesla Studio renderer failed", error);
   }
   componentDidUpdate(previous: Readonly<{ children: ReactNode; modelId: string }>) {
     if (this.state.failed && previous.modelId !== this.props.modelId) {
@@ -172,11 +176,13 @@ export function Studio() {
   }, [s.modelId, s.variantId]);
   useEffect(() => {
     if (s.demoFeature !== "headlights") return;
+    // Flash the lamps for the demo, then hand back whatever the user had chosen.
+    const previous = useStudio.getState().lightsOn;
     s.setLightsOn(false);
     const timer = window.setTimeout(() => s.setLightsOn(true), 350);
     return () => {
       window.clearTimeout(timer);
-      s.setLightsOn(true);
+      s.setLightsOn(previous);
     };
   }, [s.demoFeature, s.setLightsOn]);
   useEffect(() => {
@@ -192,20 +198,25 @@ export function Studio() {
   }, [tour, s.feature, def, s.setFeature, s.resetPose]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if (e.key !== "Escape") return;
+      // Escape dismisses an open dialog first; it only resets the view when
+      // nothing is layered over the stage.
+      if (help) {
         setHelp(false);
-        setTour(false);
-        s.resetPose();
+        return;
       }
+      if (lost) return;
+      setTour(false);
+      s.resetPose();
     };
-    const loss = () => setLost(true);
     window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [help, lost, s.resetPose]);
+  useEffect(() => {
+    const loss = () => setLost(true);
     window.addEventListener("studio-context-lost", loss);
-    return () => {
-      window.removeEventListener("keydown", key);
-      window.removeEventListener("studio-context-lost", loss);
-    };
-  }, [s.resetPose]);
+    return () => window.removeEventListener("studio-context-lost", loss);
+  }, []);
   useEffect(() => {
     const update = () => setFullscreen(!!document.fullscreenElement);
     document.addEventListener("fullscreenchange", update);
@@ -260,17 +271,19 @@ export function Studio() {
           {document.fullscreenEnabled && (
             <button
               className="icon-button fullscreen"
-              title="Fullscreen"
+              title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
               aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+              aria-pressed={fullscreen}
               onClick={() => {
-                if (document.fullscreenElement) void document.exitFullscreen();
+                if (document.fullscreenElement)
+                  void document.exitFullscreen().catch(() => {});
                 else
                   void document.documentElement
                     .requestFullscreen()
                     .catch(() => {});
               }}
             >
-              <Maximize size={18} />
+              {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
             </button>
           )}
         </div>
@@ -521,9 +534,9 @@ export function Studio() {
                   </button>
                 ))}
               </div>
-                <p className="feature-note">
-                Select a feature to move the camera. Cybertruck, Cybercab and
-                the heritage cars also open their panels. Highland and Juniper
+              <p className="feature-note">
+                Select a feature to move the camera. Cybercab and the heritage
+                cars also open their panels. Highland, Juniper and Cybertruck
                 stay closed.
               </p>
             </div>

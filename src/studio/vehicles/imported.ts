@@ -72,6 +72,14 @@ function treatImported(material: THREE.MeshPhysicalMaterial, role: string) {
     material.roughness = 0.3;
     material.envMapIntensity = 1.35;
   }
+  // The GLB declares KHR_materials_anisotropy, but the meshes carry no
+  // tangents. three.js then derives them per pixel, which is unstable on flat
+  // panels: it shows as rainbow banding and, in the worst case, NaN pixels
+  // that the bloom pass spreads across the whole frame.
+  if (!material.userData.hasTangents) {
+    material.anisotropy = 0;
+    material.anisotropyMap = null;
+  }
   if (role === "glass" || role === "lamp_lens") {
     material.transparent = true;
     material.transmission = 0;
@@ -180,9 +188,43 @@ function addPerformanceSpoiler(
   spoiler.visible = false;
 }
 
+/** Owner-manual body width (mirrors folded) for the Cybertruck import. */
+const CYBERTRUCK_BODY_WIDTH = 2.0316;
+
+/** Corrections for export defects in a source mesh. The Nieve5677
+ * Cybertruck ships three detached 48-triangle blocks floating over the
+ * cab, and its body is off-centre and narrowed to about 1.5 m. The stray
+ * blocks are dropped, and the body is centred and widened to the manual
+ * width. Length and height already match the owner manual. */
+function importFit(source: THREE.Group, model: string) {
+  const skip = new Set<THREE.Object3D>();
+  const matrix = new THREE.Matrix4();
+  if (!model.startsWith("cybertruck")) return { skip, matrix };
+  const all = new THREE.Box3().setFromObject(source);
+  const height = all.max.y - all.min.y;
+  const body = new THREE.Box3();
+  source.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    const box = new THREE.Box3().setFromObject(object);
+    const triangles =
+      (object.geometry.index?.count ?? object.geometry.getAttribute("position").count) / 3;
+    if (triangles < 500 && box.min.y > all.min.y + height * 0.6) skip.add(object);
+    else body.union(box);
+  });
+  if (body.isEmpty()) return { skip, matrix };
+  const width = body.max.x - body.min.x;
+  const mid = (body.max.x + body.min.x) / 2;
+  const scale = width > 0 && width < CYBERTRUCK_BODY_WIDTH ? CYBERTRUCK_BODY_WIDTH / width : 1;
+  matrix
+    .makeScale(scale, 1, 1)
+    .multiply(new THREE.Matrix4().makeTranslation(-mid, 0, 0));
+  return { skip, matrix };
+}
+
 /** Presentation wrapper for Sketchfab imports that already sit on +Y up, -Z forward. */
 export function prepareImported(source: THREE.Group, model: string) {
   source.updateMatrixWorld(true);
+  const fit = importFit(source, model);
   const scene = new THREE.Group();
   const body = new THREE.Group();
   body.name = "body";
@@ -220,7 +262,7 @@ export function prepareImported(source: THREE.Group, model: string) {
   }
 
   source.traverse((object) => {
-    if (!(object instanceof THREE.Mesh)) return;
+    if (!(object instanceof THREE.Mesh) || fit.skip.has(object)) return;
     const originals = Array.isArray(object.material)
       ? object.material
       : [object.material];
@@ -240,6 +282,7 @@ export function prepareImported(source: THREE.Group, model: string) {
           material.copy(original);
         else THREE.MeshStandardMaterial.prototype.copy.call(material, original);
         material.name = role;
+        material.userData.hasTangents = !!object.geometry.getAttribute("tangent");
         treatImported(material, role);
         materials.set(key, material);
       }
@@ -248,7 +291,11 @@ export function prepareImported(source: THREE.Group, model: string) {
     const material = Array.isArray(object.material) ? copies : copies[0];
     // Flatten the hierarchy into the presentation rig without losing the
     // source node's translation, rotation or scale.
-    const geometry = object.geometry.clone().applyMatrix4(object.matrixWorld);
+    const geometry = object.geometry
+      .clone()
+      .applyMatrix4(
+        new THREE.Matrix4().multiplyMatrices(fit.matrix, object.matrixWorld),
+      );
     let part = "body";
     if (originals.every((m) => WHEEL_ROLES.test(inferRole(m.name, object.name)))) {
       let best = "";

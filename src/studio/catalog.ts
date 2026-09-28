@@ -498,7 +498,7 @@ VEHICLES.unshift(
     name: "Model 3",
     tag: "Original design",
     features: heritageFeatures,
-    parts: ["door-fl", "door-fr", "frunk", "trunk"],
+    parts: ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk"],
     variants: [
       {
         id: "rwd",
@@ -537,7 +537,7 @@ VEHICLES.unshift(
     name: "Model S",
     tag: "Original design",
     features: heritageFeatures,
-    parts: ["door-fl", "door-fr", "frunk", "trunk"],
+    parts: ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk"],
     variants: [
       {
         id: "85",

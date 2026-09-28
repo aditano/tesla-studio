@@ -171,7 +171,10 @@ export function prepareHighland(source: THREE.Group) {
       ) {
         part = "wheel_" + (z < 0 ? "f" : "r") + (x < 0 ? "l" : "r");
       }
-      const role = highlandRole(name, x, y, z);
+      let role = highlandRole(name, x, y, z);
+      // The wheel faces share the body-shell material. Inside a wheel group
+      // they are rims, not bodywork, and must not take the paint colour.
+      if (part !== "body" && role === "exterior_paint") role = "wheel_finish";
       const key = part + "|" + role;
       const list = buckets.get(key) ?? [];
       list.push(...ids);

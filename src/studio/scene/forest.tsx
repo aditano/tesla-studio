@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { JSX } from "react";
 import * as THREE from "three";
+import { clearOfSightlines, mergesWithCar, overlapsCar } from "./clearance";
 
 const CONIFER_COUNT = 40;
 const DECIDUOUS_COUNT = 8;
@@ -247,7 +248,19 @@ function buildTrees(rng: Rng): TreeSpot[] {
       trunk: pick(rng, TRUNKS),
     });
   }
+  // The layout above was tuned for one camera. Every studio shot, on desktop
+  // and phone, must see the car, so nudge any tree that would fill a lens or
+  // stand between a camera and the car.
+  for (const tree of trees) {
+    const radius = tree.kind === "conifer" ? 0.7 + (tree.h - 3.2) * 0.16 : 1.3;
+    [tree.x, tree.z] = clearOfSightlines(tree.x, tree.z, radius, tree.h);
+  }
   return trees;
+}
+
+/** Exported so tests can prove no tree hides the car. */
+export function forestTreeLayout(): readonly TreeSpot[] {
+  return buildTrees(mulberry32(0x5eedf045));
 }
 
 function buildFireflies(rng: Rng, trees: readonly TreeSpot[]): Firefly[] {
@@ -258,7 +271,7 @@ function buildFireflies(rng: Rng, trees: readonly TreeSpot[]): Firefly[] {
       y,
       z,
       phase: rng() * Math.PI * 2,
-      size: range(rng, 0.34, 0.58),
+      size: range(rng, 0.07, 0.13),
       drift: range(rng, 0.12, 0.28),
       color: rng() < 0.62 ? FIREFLY_COLORS[0] : FIREFLY_COLORS[1],
     });
@@ -296,24 +309,17 @@ function buildFireflies(rng: Rng, trees: readonly TreeSpot[]): Firefly[] {
     const z = tree.z + range(rng, -1.2, 1.2);
     push(x, y, z);
   }
-  const anchors: readonly [number, number, number][] = [
-    [-1.5, 1.45, -2.2],
-    [1.2, 1.7, -1.4],
-    [0.35, 2.05, 0.4],
-    [-0.9, 1.25, 1.6],
-    [1.7, 1.85, 2.4],
-    [-2.1, 2.15, 3.2],
-    [0.15, 2.35, -0.2],
-    [2.15, 1.35, 0.5],
-  ];
-  anchors.forEach((anchor, index) => {
-    const fly = flies[index];
-    if (!fly) return;
-    fly.x = anchor[0];
-    fly.y = anchor[1];
-    fly.z = anchor[2];
-    fly.size = 0.46 + (index % 3) * 0.08;
-  });
+  // Fireflies drift over the verges, never over the car body where they read
+  // as blobs stuck to the paint.
+  for (const fly of flies) {
+    if (Math.abs(fly.x) < 3.1 && fly.z > -4 && fly.z < 12) {
+      fly.x = (fly.x < 0 ? -1 : 1) * range(rng, 3.2, 4.6);
+    }
+    // A glint on the roofline reads as a highlight on the paint; drift those
+    // outward until they sit against foliage instead.
+    for (let step = 0; step < 24 && mergesWithCar(fly.x, fly.z, 0.1, fly.y + 0.1); step += 1)
+      fly.x += (fly.x < 0 ? -1 : 1) * 0.6;
+  }
   return flies;
 }
 
@@ -548,7 +554,7 @@ function createForest(): ForestWorld {
   const rayMat = new THREE.MeshBasicMaterial({
     color: "#e7f3d2",
     transparent: true,
-    opacity: 0.18,
+    opacity: 0.09,
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     toneMapped: false,
@@ -691,25 +697,33 @@ function createForest(): ForestWorld {
     stamp(bushes, i, x, sy * 0.62, z, 0, rng() * Math.PI, 0, sx, sy, sx * range(rng, 0.85, 1.15), pick(rng, FOLIAGE));
   }
 
-  const sun = new THREE.Vector3(5.4, 16.5, -4.2);
-  const rayEnds: readonly [number, number, number][] = [
-    [-0.35, 0.45, 2.4],
-    [0.85, 0.4, 6.8],
-    [-0.7, 0.5, -1.2],
-    [0.25, 0.35, 11.4],
-  ];
-  rayEnds.forEach((end, index) => {
-    const foot = new THREE.Vector3(end[0], end[1], end[2]);
+  // Shafts fall from a high sun behind the trees. Each one is placed from a
+  // ring of candidate feet so that no part of it crosses the car on screen in
+  // any wide shot; a shaft over the paint reads as a smear, not atmosphere.
+  const sun = new THREE.Vector3(-4, 22, 24);
+  const candidates: [number, number][] = [];
+  for (let i = 0; i < 48; i += 1) {
+    const a = (i / 48) * Math.PI * 2;
+    for (const r of [9, 13, 17]) candidates.push([Math.cos(a) * r, Math.sin(a) * r]);
+  }
+  let placed = 0;
+  for (const [x, z] of candidates) {
+    if (placed >= RAY_COUNT) break;
+    const foot = new THREE.Vector3(x, 0.4, z);
     const dir = sun.clone().sub(foot).normalize();
-    const length = 14.5 + index * 0.7;
-    const radius = 1.45 + (index % 2) * 0.45;
+    const length = 14.5 + placed * 0.7;
+    const samples = [0, 0.1, 0.2, 0.3, 0.45, 0.6].map((t) => foot.clone().addScaledVector(dir, length * t));
+    if (overlapsCar(samples, 1.1)) continue;
+    const radius = 0.9 + (placed % 2) * 0.35;
     const mid = foot.clone().addScaledVector(dir, length * 0.5);
     dummy.position.copy(mid);
     dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     dummy.scale.set(radius, length, radius);
     dummy.updateMatrix();
-    rays.setMatrixAt(index, dummy.matrix);
-  });
+    rays.setMatrixAt(placed, dummy.matrix);
+    placed += 1;
+  }
+  rays.count = placed;
 
   flies.forEach((fly, index) => {
     tint.setHex(fly.color);

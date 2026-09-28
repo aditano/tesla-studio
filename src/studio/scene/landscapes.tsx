@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { WebGLProgramParametersWithUniforms } from "three";
 import * as THREE from "three";
+import { clearOfSightlines, mergesWithCar } from "./clearance";
 
 type Tracked = { dispose: () => void };
 
@@ -53,6 +54,11 @@ const DUST_COUNT = 120;
 const SCRUB_COUNT = 24;
 const DESERT_ROCK_COUNT = 8;
 const BUILDING_COUNT = 20;
+const SKYLINE_COUNT = 46;
+/** Metres of facade covered by one window-texture tile: 8 bays of 1.1 m and
+ * 6 floors of 1.7 m. Slightly under true scale on purpose, because at
+ * backdrop distance full-size bays read as oversized panels beside the car. */
+const FACADE_TILE = [8.8, 10.2] as const;
 const LAMP_ZS = [-20, -10, 0, 10] as const;
 
 function createTracker(): Tracker {
@@ -119,7 +125,8 @@ function fbm(x: number, z: number, seed: number): number {
 
 function parkFlat(x: number, z: number, height: number, reachX: number, reachZ: number): number {
   const distance = Math.hypot(x / reachX, z / reachZ);
-  const keep = distance <= 1 ? 0 : Math.min(1, (distance - 1) / 1.25);
+  const ramp = distance <= 1 ? 0 : Math.min(1, (distance - 1) / 1.6);
+  const keep = ramp * ramp * (3 - 2 * ramp);
   return 0.012 + (height - 0.012) * keep;
 }
 
@@ -134,7 +141,7 @@ function marsHeightRaw(x: number, z: number): number {
   return Math.min(1.4, Math.max(0.15, height));
 }
 
-function marsHeight(x: number, z: number): number {
+export function marsHeight(x: number, z: number): number {
   return parkFlat(x, z, marsHeightRaw(x, z), 2.8, 3.6);
 }
 
@@ -147,7 +154,7 @@ function desertHeightRaw(x: number, z: number): number {
   return Math.min(1.1, Math.max(0.2, height));
 }
 
-function desertHeight(x: number, z: number): number {
+export function desertHeight(x: number, z: number): number {
   return parkFlat(x, z, desertHeightRaw(x, z), 3.4, 4.8);
 }
 
@@ -203,7 +210,9 @@ function makeDunePlane(
   colorSeed: number,
   roughness: number,
 ): THREE.Mesh {
-  const geometry = tracker.track(new THREE.PlaneGeometry(90, 90, 48, 48));
+  // 0.75 m cells: coarser grids terrace the flattened pad around the car into
+  // hard diagonal bands and aliased vertex-colour stripes.
+  const geometry = tracker.track(new THREE.PlaneGeometry(90, 90, 120, 120));
   geometry.rotateX(-Math.PI / 2);
   const position = geometry.getAttribute("position");
   const colors = new Float32Array(position.count * 3);
@@ -314,7 +323,22 @@ function fillInstances(mesh: THREE.InstancedMesh, items: readonly Instance[]): v
   mesh.frustumCulled = false;
 }
 
-function scatterRocks(
+/** Lowest terrain height under a circular footprint. */
+function groundUnder(
+  heightAt: (x: number, z: number) => number,
+  x: number,
+  z: number,
+  radius: number,
+) {
+  let low = heightAt(x, z);
+  for (let i = 0; i < 8; i += 1) {
+    const a = (i / 8) * Math.PI * 2;
+    low = Math.min(low, heightAt(x + Math.cos(a) * radius, z + Math.sin(a) * radius));
+  }
+  return low;
+}
+
+export function scatterRocks(
   count: number,
   seed: number,
   heightAt: (x: number, z: number) => number,
@@ -354,15 +378,38 @@ function scatterRocks(
       }
     }
     if (crowded) continue;
+    // Rocks must not sit between a studio camera and the car, nor directly
+    // behind it where they merge with the roofline and read as floating.
+    // Height is measured from y = 0: the dunes lift rocks by up to 1.4 m.
+    const [cx, cz] = clearOfSightlines(x, z, Math.max(sx, sz), heightAt(x, z) + sy * 1.2);
     const color = dark.clone().lerp(darker, rand());
     items.push({
-      position: [x, heightAt(x, z) + sy * 0.42, z],
+      // Bury the lower half: a dodecahedron resting on a tip floats visibly on
+      // uneven terrain. Sample the lowest ground under its footprint.
+      position: [cx, groundUnder(heightAt, cx, cz, Math.max(sx, sz)) + sy * 0.18, cz],
       rotation: [rand() * 0.7, rand() * Math.PI * 2, rand() * 0.7],
       scale: [sx, sy, sz],
       color,
     });
   }
   return items;
+}
+
+/** Irregular boulder: a subdivided icosahedron with noise-displaced vertices,
+ * flattened at the base so it sits on the ground. */
+function roughRock(radius: number, seed: number): THREE.BufferGeometry {
+  const geometry = new THREE.IcosahedronGeometry(radius, 2);
+  const position = geometry.getAttribute("position");
+  const v = new THREE.Vector3();
+  for (let i = 0; i < position.count; i += 1) {
+    v.fromBufferAttribute(position, i);
+    const n = fbm(v.x * 1.7 + 3.1, v.z * 1.7 + v.y * 1.3, seed * 0.001);
+    v.multiplyScalar(0.78 + n * 0.5);
+    if (v.y < -0.35 * radius) v.y = -0.35 * radius + (v.y + 0.35 * radius) * 0.2;
+    position.setXYZ(i, v.x, v.y, v.z);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 function makeHazePlane(
@@ -394,7 +441,7 @@ function buildMars(): MarsScene {
   const group = new THREE.Group();
   group.add(makeDunePlane(tracker, marsHeight, MARS_PALETTE, 8.4, 0.96));
 
-  const rockGeometry = tracker.track(new THREE.DodecahedronGeometry(1, 0));
+  const rockGeometry = tracker.track(roughRock(1, 0x5a15));
   const rockMaterial = tracker.track(
     new THREE.MeshStandardMaterial({
       color: "#ffffff",
@@ -530,8 +577,10 @@ function buildDesert(): DesertScene {
     guard += 1;
     const side = rand() < 0.5 ? -1 : 1;
     const radius = 0.22 + rand() * 0.28;
-    const x = side * (2.2 + radius + 0.45 + rand() * 22);
-    const z = (rand() - 0.5) * 62;
+    const rawX = side * (2.2 + radius + 0.45 + rand() * 22);
+    const rawZ = (rand() - 0.5) * 62;
+    // Scrub behind the car merges with the roofline in the overview.
+    const [x, z] = clearOfSightlines(rawX, rawZ, radius, desertHeight(rawX, rawZ) + 0.95);
     let crowded = false;
     for (const other of cones) {
       const dx = other.position[0] - x;
@@ -588,7 +637,7 @@ function buildDesert(): DesertScene {
     2.2,
     3,
   );
-  const desertRockGeometry = tracker.track(new THREE.DodecahedronGeometry(1, 0));
+  const desertRockGeometry = tracker.track(roughRock(1, 0x0c0a));
   const desertRockMaterial = tracker.track(
     new THREE.MeshStandardMaterial({
       color: "#ffffff",
@@ -687,25 +736,43 @@ function makeFacade(
 
 function makeWindowTexture(tracker: Tracker): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
-  canvas.width = 256;
-  canvas.height = 256;
+  canvas.width = 512;
+  canvas.height = 512;
   const context = require2d(canvas);
   context.fillStyle = "#07080c";
-  context.fillRect(0, 0, 256, 256);
+  context.fillRect(0, 0, 512, 512);
   const rand = mulberry32(0x51c0de);
+  // One tile spans 4.4 x 5.2 m of facade (see the repeat in buildCity):
+  // roughly three floors of eight bays reads at a believable scale.
   const cols = 8;
-  const rows = 14;
-  const cellW = 256 / cols;
-  const cellH = 256 / rows;
+  const rows = 6;
+  const cellW = 512 / cols;
+  const cellH = 512 / rows;
   for (let row = 0; row < rows; row += 1) {
+    // Whole floors tend to be lit or dark together, like real offices.
+    const floorLit = rand() > 0.45;
     for (let col = 0; col < cols; col += 1) {
       const roll = rand();
-      let color = "#1a120c";
-      if (roll > 0.9) color = "#9eb6ff";
-      else if (roll > 0.74) color = "#ffc48a";
-      else if (roll > 0.66) color = "#3a2a18";
+      let color = "#120d0a";
+      if (floorLit) {
+        if (roll > 0.82) color = "#a8bcff";
+        else if (roll > 0.38) color = rand() > 0.5 ? "#ffc88e" : "#f3d6a8";
+        else if (roll > 0.26) color = "#3a2a18";
+      } else if (roll > 0.93) color = "#ffc48a";
       context.fillStyle = color;
-      context.fillRect(col * cellW + 4, row * cellH + 3, cellW - 8, cellH - 6);
+      context.fillRect(col * cellW + 5, row * cellH + 8, cellW - 10, cellH * 0.6);
+      // Floor slab: a solid band between storeys so windows read as a grid of
+      // rooms rather than continuous vertical slats.
+      context.fillStyle = "#0b0c10";
+      context.fillRect(col * cellW, row * cellH, cellW, 6);
+      // Mullion splitting each bay into two panes.
+      context.fillStyle = "#07080c";
+      context.fillRect(col * cellW + cellW / 2 - 1, row * cellH + 8, 2, cellH * 0.6);
+      // Spandrel panel under each window catches a little of the glow.
+      if (color !== "#120d0a") {
+        context.fillStyle = "rgba(255,200,150,0.06)";
+        context.fillRect(col * cellW + 3, row * cellH + 6 + cellH * 0.62, cellW - 6, cellH * 0.2);
+      }
     }
   }
   const texture = tracker.track(new THREE.CanvasTexture(canvas));
@@ -749,7 +816,7 @@ function buildCity(reduced: boolean): CityScene {
   const tracker = createTracker();
   const group = new THREE.Group();
   const windows = makeWindowTexture(tracker);
-  const steadyIntensity = reduced ? 0.7 : 0.8;
+  const steadyIntensity = reduced ? 1.05 : 1.15;
   const flickerA = makeFacade(tracker, windows, "#141820", steadyIntensity);
   const flickerB = makeFacade(tracker, windows, "#1a1e28", steadyIntensity);
   const steady = makeFacade(tracker, windows, "#0e1218", steadyIntensity);
@@ -763,10 +830,10 @@ function buildCity(reduced: boolean): CityScene {
   for (let i = 0; i < BUILDING_COUNT; i += 1) {
     const side = i < 10 ? -1 : 1;
     const along = i % 10;
-    const width = 2.5 + rand() * 3.1;
-    const depth = 2.3 + rand() * 1.45;
-    const height = 3.5 + Math.pow(rand(), 1.25) * 12.5;
-    const x = side * (5.5 + width * 0.5 + 0.4 + rand() * 5.2);
+    const width = 8 + rand() * 8;
+    const depth = 8 + rand() * 6;
+    const height = 14 + Math.pow(rand(), 1.25) * 34;
+    const x = side * (9 + depth * 0.5 + rand() * 5);
     const z = -23.5 + (along / 9) * 41 + (rand() - 0.5) * 0.5;
     const yaw = (rand() - 0.5) * 0.1;
     const slot = i % 3;
@@ -776,7 +843,7 @@ function buildCity(reduced: boolean): CityScene {
       rotation: [0, yaw, 0],
       scale: [width, height, depth],
       color: null,
-      repeat: [Math.max(1, width / 4.4), Math.max(1, height / 5.2)],
+      repeat: [width / FACADE_TILE[0], height / FACADE_TILE[1]],
       offset,
     });
     let roof = height;
@@ -789,7 +856,7 @@ function buildCity(reduced: boolean): CityScene {
         rotation: [0, yaw, 0],
         scale: [setbackW, setbackH, setbackD],
         color: null,
-        repeat: [Math.max(1, setbackW / 4.4), Math.max(1, setbackH / 3.2)],
+        repeat: [setbackW / FACADE_TILE[0], setbackH / FACADE_TILE[1]],
         offset: [offset[0] + 0.17, offset[1] + 0.11],
       });
       roof = height + setbackH;
@@ -803,6 +870,32 @@ function buildCity(reduced: boolean): CityScene {
         color: null,
       });
     }
+  }
+
+  // Distant skyline: a ring of towers 55-95 m out, lit with the same window
+  // texture at a finer repeat so the grid shrinks with distance.
+  const skyline = mulberry32(0x5ca1e);
+  for (let i = 0; i < SKYLINE_COUNT; i += 1) {
+    const bearing = (i / SKYLINE_COUNT) * Math.PI * 2 + (skyline() - 0.5) * 0.12;
+    const distance = 55 + skyline() * 40;
+    const width = 5 + skyline() * 9;
+    const depth = 5 + skyline() * 7;
+    const height = 14 + Math.pow(skyline(), 1.6) * 46;
+    bodies[i % 3].push({
+      position: [Math.cos(bearing) * distance, height * 0.5, Math.sin(bearing) * distance],
+      rotation: [0, -bearing, 0],
+      scale: [width, height, depth],
+      color: null,
+      repeat: [width / FACADE_TILE[0], height / FACADE_TILE[1]],
+      offset: [skyline(), skyline()],
+    });
+    if (height > 40)
+      antennas.push({
+        position: [Math.cos(bearing) * distance, height + 2, Math.sin(bearing) * distance],
+        rotation: [0, 0, 0],
+        scale: [3, 4, 3],
+        color: null,
+      });
   }
 
   for (let slot = 0; slot < facades.length; slot += 1) {
@@ -828,6 +921,9 @@ function buildCity(reduced: boolean): CityScene {
   for (const z of LAMP_ZS) {
     for (const side of [-1, 1]) {
       const x = side * 2.55;
+      // A pole rising out of the bonnet or roof in a wide shot looks like part
+      // of the car. Leave that lamp out; the street keeps its rhythm.
+      if (mergesWithCar(x, z, 0.12, 2.2)) continue;
       lamps.push({
         position: [x, 1.02, z],
         rotation: [0, 0, 0],
@@ -861,6 +957,48 @@ function buildCity(reduced: boolean): CityScene {
       roughness: 0.32,
     }),
   );
+  // Sodium pools on the wet street under each lamp. They ground the car and
+  // give the paint something warm to reflect.
+  const poolCanvas = document.createElement("canvas");
+  poolCanvas.width = poolCanvas.height = 128;
+  const poolContext = require2d(poolCanvas);
+  const poolGradient = poolContext.createRadialGradient(64, 64, 0, 64, 64, 64);
+  poolGradient.addColorStop(0, "rgba(255,178,104,0.34)");
+  poolGradient.addColorStop(0.45, "rgba(255,150,80,0.1)");
+  poolGradient.addColorStop(1, "rgba(255,140,70,0)");
+  poolContext.fillStyle = poolGradient;
+  poolContext.fillRect(0, 0, 128, 128);
+  const poolTexture = tracker.track(new THREE.CanvasTexture(poolCanvas));
+  poolTexture.colorSpace = THREE.SRGBColorSpace;
+  const poolMaterial = tracker.track(
+    new THREE.MeshBasicMaterial({
+      map: poolTexture,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+    }),
+  );
+  const poolGeometry = tracker.track(new THREE.PlaneGeometry(1, 1));
+  poolGeometry.rotateX(-Math.PI / 2);
+  const pools = new THREE.InstancedMesh(poolGeometry, poolMaterial, lamps.length + 1);
+  fillInstances(
+    pools,
+    [
+      ...lamps.map((lamp) => ({
+        position: [lamp.position[0] * 0.55, 0.031, lamp.position[2]] as [number, number, number],
+        rotation: [0, 0, 0] as [number, number, number],
+        scale: [6.5, 1, 6.5] as [number, number, number],
+        color: null,
+      })),
+      // A soft pool under the car itself, as if it were parked under a lamp.
+      { position: [0, 0.031, 0.4], rotation: [0, 0, 0], scale: [8.5, 1, 10], color: null },
+    ],
+  );
+  pools.renderOrder = 1;
+  tracker.track(pools);
+  group.add(pools);
+
   const poleMesh = new THREE.InstancedMesh(poleGeometry, poleMaterial, lamps.length);
   const bulbMesh = new THREE.InstancedMesh(bulbGeometry, bulbMaterial, bulbs.length);
   fillInstances(poleMesh, lamps);
@@ -940,8 +1078,8 @@ export function CityScenery(): JSX.Element {
   const scene = useSceneLifetime(() => buildCity(reduced));
   useFrame(({ clock }) => {
     const time = clock.elapsedTime;
-    scene.flickerA.emissiveIntensity = reduced ? 0.7 : 0.75 + Math.sin(time * 1.17) * 0.4;
-    scene.flickerB.emissiveIntensity = reduced ? 0.7 : 0.75 + Math.sin(time * 0.73 + 2.2) * 0.4;
+    scene.flickerA.emissiveIntensity = reduced ? 1.05 : 1.1 + Math.sin(time * 1.17) * 0.25;
+    scene.flickerB.emissiveIntensity = reduced ? 1.05 : 1.1 + Math.sin(time * 0.73 + 2.2) * 0.25;
   });
   return <primitive object={scene.group} dispose={null} />;
 }

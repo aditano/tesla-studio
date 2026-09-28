@@ -11,7 +11,7 @@ An independent, noncommercial browser vehicle studio with configurable finishes,
 - Juniper uses BloxBloger's Sketchfab 2025 Model Y (CC BY-NC, 307k triangles). Juniper keeps a static body. Cybertruck uses Nieve5677's Sketchfab 2025 mesh (CC BY 4.0, about 73k triangles), also a closed body. The higher-detail Sketcher Cybertruck and the zwir3kk Cybercab scan are CC BY but still need a Sketchfab login; Cybercab stays on the authored concept study until that file is downloaded. See [asset sourcing](docs/asset-sourcing.md).
 - Model and trim selection, exterior colors, interior finishes, and trim-specific sport hardware.
 - Guided tours with eased camera moves followed by articulated demonstrations. Individual features can be selected, revisited, or exited.
-- Background switcher for the original studio, daylight and midnight stages plus Mars, a forest backroad, a night city and a desert highway. Outdoor scenes use a procedural sky, displaced dunes or city blocks, and a light rig tuned per backdrop. The forest adds instanced trees, god-ray shafts, fireflies, birds and a deer. Reflection maps are generated in Three.js at a web-sized resolution. No remote HDRIs.
+- Background switcher for the original studio, daylight and midnight stages plus Mars, a forest backroad, a night city and a desert highway. The studio stages sit inside a curved cyclorama with built-in light slots and ceiling softboxes that match the reflections. Outdoor scenes use a procedural sky, layered horizon ridges or a lit skyline, displaced dunes or city blocks, and a key, fill and rim light rig tuned per backdrop. The forest adds instanced trees, god-ray shafts, fireflies, birds and a deer. Props are kept clear of every studio camera and of the car's silhouette. Reflection maps are generated in Three.js at a web-sized resolution. No remote HDRIs.
 - Touch orbit and pinch zoom, collapsible mobile controls, and render quality set to Auto (high at 768 px and wider), High, or Low. Loading and error states, keyboard-accessible controls, and a help/credits dialog.
 
 ## Controls
@@ -39,7 +39,7 @@ npm run assets:build
 
 The Vite base path remains `/tesla-studio/` for the existing GitHub Pages site. The rendering code is lazy-loaded separately from the interface. There are no remotely hosted HDR dependencies; the reflection environment is generated in Three.js. Imported meshes and their textures are served from `public/models/`. Google Fonts is optional, with local system-font fallback.
 
-`npm test` covers model/trim/feature selection, camera-shot coverage, state reset and invalid options, procedural geometry validity, parsing the actual heritage asset buffers through Three.js, and decoding all four compressed GLBs with the runtime loader, validating geometry budgets and hinge directions. The imported Highland test verifies source triangle preservation, texture paths, scale and rig coverage. Textures are stubbed only during the headless geometry test, with file existence checked separately. These are structural tests, not GPU screenshot or browser interaction tests.
+`npm test` covers model/trim/feature selection, camera-shot coverage, state reset and invalid options, parsing the actual heritage asset buffers through Three.js (including straight, outward-opening four-door shut lines), and decoding all four compressed GLBs with the runtime loader, validating geometry budgets and hinge directions. The imported Highland test verifies source triangle preservation, texture paths, scale and rig coverage. Textures are stubbed only during the headless geometry test, with file existence checked separately. It also checks that no forest tree or rock blocks a studio camera or merges with the car outline, and that the headlight ground pool faces up. These are structural tests, not GPU screenshot or browser interaction tests.
 
 GitHub Actions runs a clean install, TypeScript, the tests, and the production build on pull requests and on `main`. Only a push to `main` (or a manual run there) publishes `dist` to the existing `gh-pages` branch.
 
@@ -48,8 +48,9 @@ GitHub Actions runs a clean install, TypeScript, the tests, and the production b
 - `src/studio/catalog.ts`: vehicles, variants, palettes and feature availability.
 - `src/studio/store.ts`: configuration, tour focus, animation state and reset behavior.
 - `src/studio/Studio.tsx`: responsive configurator and guided-tour orchestration.
-- `src/studio/scene/`: lighting, quality settings and deterministic camera shots.
-- `src/studio/vehicles/HeritageVehicle.tsx`: glTF normalization, material adaptation and demonstration rig.
+- `src/studio/scene/`: lighting, quality settings, deterministic camera shots, backdrops (`stage.tsx` studio set, `horizon.ts` ridges, `landscapes.tsx`, `forest.tsx`) and `clearance.ts`, which keeps scenery out of every shot.
+- `src/studio/vehicles/HeritageVehicle.tsx`: glTF normalization, material adaptation and a plane-clipped four-door, hood and hatch rig.
+- `src/studio/vehicles/LampBeams.tsx`: headlight signatures snapped onto each lamp surface, road spots and the ground pool.
 - `src/studio/vehicles/AuthoredVehicle.tsx`: compressed GLB loading, configuration and named-part animation.
 - `scripts/assets/`: reproducible geometry authoring and lossless mesh compression.
 - `public/models/authored/`: newer vehicle GLBs, geometry manifest and reference notes.

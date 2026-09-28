@@ -3,6 +3,7 @@ import * as THREE from "three";
 import type { Backdrop, SceneryKind } from "./backdrops";
 import { ForestScenery } from "./forest";
 import { CityScenery, DesertScenery, MarsScenery } from "./landscapes";
+import { disposeHorizon, makeHorizon, type RidgeLayer } from "./horizon";
 
 function hash(seed: number) {
   let s = seed >>> 0;
@@ -113,7 +114,7 @@ function DappledCanopy() {
       position={[3.4, 12.5, -2.6]}
       angle={0.62}
       penumbra={0.9}
-      intensity={18}
+      intensity={11}
       distance={36}
       decay={1.4}
       color="#f7f3df"
@@ -122,6 +123,32 @@ function DappledCanopy() {
     />
   );
 }
+
+/** Alpha ramp for the road shoulders: opaque at the deck, clear outward. */
+function useShoulderFade() {
+  const texture = useMemo(() => {
+    if (typeof document === "undefined") return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 4;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    const grad = ctx.createLinearGradient(0, 0, 64, 0);
+    grad.addColorStop(0, "#ffffff");
+    grad.addColorStop(0.35, "#8a8a8a");
+    grad.addColorStop(1, "#000000");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 4);
+    const map = new THREE.CanvasTexture(canvas);
+    map.colorSpace = THREE.NoColorSpace;
+    return map;
+  }, []);
+  useEffect(() => () => texture?.dispose(), [texture]);
+  return texture;
+}
+
+/** Road deck height. Contact shadows are drawn just above it. */
+export const ROAD_Y = 0.024;
 
 function Road({
   color,
@@ -132,18 +159,51 @@ function Road({
   width: number;
   dash?: string;
 }) {
+  const shoulder = useShoulderFade();
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.012, 0]} receiveShadow>
+      {/* Terrain flattens to y 0.012 under the car; sit clearly above it so
+          the two surfaces never z-fight into stair-stepped stripes. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, ROAD_Y, 0]} receiveShadow>
         <planeGeometry args={[width, 80]} />
-        <meshStandardMaterial color={color} roughness={0.88} metalness={0.04} />
+        <meshStandardMaterial
+          color={color}
+          roughness={0.88}
+          metalness={0.04}
+          polygonOffset
+          polygonOffsetFactor={-1}
+          polygonOffsetUnits={-1}
+        />
       </mesh>
+      {/* Soft gravel shoulders so the deck fades into the terrain instead of
+          ending in a hard diagonal edge. */}
+      {shoulder &&
+        [-1, 1].map((side) => (
+          <mesh
+            key={side}
+            rotation={[-Math.PI / 2, 0, side < 0 ? Math.PI : 0]}
+            position={[side * (width / 2 + 0.7), ROAD_Y - 0.002, 0]}
+            renderOrder={1}
+          >
+            <planeGeometry args={[1.4, 80]} />
+            <meshStandardMaterial
+              color={color}
+              alphaMap={shoulder}
+              transparent
+              depthWrite={false}
+              roughness={0.95}
+              polygonOffset
+              polygonOffsetFactor={-1}
+              polygonOffsetUnits={-1}
+            />
+          </mesh>
+        ))}
       {dash &&
         Array.from({ length: 14 }, (_, i) => (
           <mesh
             key={i}
             rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, 0.02, -28 + i * 4]}
+            position={[0, ROAD_Y + 0.004, -28 + i * 4]}
           >
             <planeGeometry args={[0.12, 1.4]} />
             <meshBasicMaterial color={dash} />
@@ -151,6 +211,53 @@ function Road({
         ))}
     </group>
   );
+}
+
+/** Distant silhouettes per scene, far to near. Radii sit inside the sky dome
+ * (180 m) and beyond the playable floor, so they only ever frame the car. */
+const HORIZONS: Partial<Record<SceneryKind, { haze: string; layers: RidgeLayer[] }>> = {
+  mars: {
+    haze: "#c08066",
+    layers: [
+      { radius: 150, height: [6, 26], color: "#8a4a38", haze: 0.62, profile: "jagged", seed: 3 },
+      { radius: 110, height: [3, 13], color: "#7a3a2a", haze: 0.42, profile: "rolling", seed: 7 },
+      { radius: 78, height: [1.2, 5.5], color: "#6a2e22", haze: 0.24, profile: "mesa", seed: 11 },
+    ],
+  },
+  desert: {
+    haze: "#ecd6b0",
+    layers: [
+      { radius: 160, height: [8, 22], color: "#b08868", haze: 0.66, profile: "jagged", seed: 5 },
+      { radius: 120, height: [4, 14], color: "#b27e52", haze: 0.44, profile: "mesa", seed: 13 },
+      { radius: 86, height: [0.8, 3.6], color: "#c9a06a", haze: 0.28, profile: "rolling", seed: 17 },
+    ],
+  },
+  forest: {
+    haze: "#5f7a66",
+    layers: [
+      { radius: 150, height: [10, 30], color: "#3c5a4c", haze: 0.58, profile: "jagged", seed: 19 },
+      { radius: 96, height: [7, 13], color: "#1c3326", haze: 0.3, profile: "rolling", seed: 23 },
+    ],
+  },
+  city: {
+    haze: "#1c1a3a",
+    layers: [
+      { radius: 150, height: [4, 44], color: "#0c0e1c", haze: 0.35, profile: "skyline", seed: 29 },
+      { radius: 105, height: [2, 26], color: "#07080f", haze: 0.18, profile: "skyline", seed: 31 },
+    ],
+  },
+};
+
+function Horizon({ kind }: { kind: SceneryKind }) {
+  const spec = HORIZONS[kind];
+  const group = useMemo(
+    () => (spec ? makeHorizon(spec.layers, spec.haze) : null),
+    [spec],
+  );
+  useEffect(() => () => {
+    if (group) disposeHorizon(group);
+  }, [group]);
+  return group ? <primitive object={group} /> : null;
 }
 
 function Scenery({ kind }: { kind: SceneryKind }) {
@@ -188,6 +295,7 @@ export function BackdropScenery({ backdrop }: { backdrop: Backdrop }) {
   return (
     <group>
       <SkyDome backdrop={backdrop} />
+      <Horizon kind={backdrop.scenery} />
       <Scenery kind={backdrop.scenery} />
     </group>
   );

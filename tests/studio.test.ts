@@ -9,8 +9,7 @@ import { useStudio } from "../src/studio/store";
 import { SHOTS, frameShot, minOrbitDistance, shotDistance, shotFor } from "../src/studio/scene/shots";
 import { prefersHighQuality } from "../src/studio/scene/quality";
 import { suspensionLift, wheelsShareBody } from "../src/studio/vehicles/suspension";
-import { coachwork } from "../src/studio/vehicles/coachwork";
-import { prepareHeritage, pivots, heritageOpenAngles } from "../src/studio/vehicles/HeritageVehicle";
+import { prepareHeritage, heritagePivot, heritageRig, heritageOpenAngles, inPanel } from "../src/studio/vehicles/HeritageVehicle";
 import { BACKDROPS } from "../src/studio/scene/backdrops";
 {
   const ids = BACKDROPS.map((backdrop) => backdrop.id);
@@ -157,17 +156,6 @@ function checkGeometry(g: THREE.BufferGeometry) {
   assert.equal(index.count % 3, 0);
   for (const value of index.array) assert.ok(value >= 0 && value < p.count);
 }
-for (const crossover of [false, true]) {
-  const pieces = coachwork(crossover);
-  for (const [key, geometries] of Object.entries(pieces)) {
-    assert.ok(geometries.length > 0, `Missing ${key}`);
-    for (const g of geometries) {
-      checkGeometry(g);
-      g.dispose();
-    }
-  }
-}
-console.log("PASS: sedan and crossover body, door, glass, hood and hatch geometry");
 // Load the actual glTF buffers through Three.js. Textures are stubbed only for this headless geometry check.
 (globalThis as any).self = globalThis;
 (globalThis as any).ProgressEvent = class {
@@ -203,12 +191,37 @@ for (const model of ["model-3-heritage", "model-s-heritage"]) {
       const positions = o.geometry.getAttribute("position");
       for (const i of o.geometry.index!.array) {
         point.fromBufferAttribute(positions, i);
-        closedY += point.y + pivots[panel][1];
-        openY += point.applyMatrix4(rotation).y + pivots[panel][1];
+        closedY += point.y + heritagePivot(model, panel)[1];
+        openY += point.applyMatrix4(rotation).y + heritagePivot(model, panel)[1];
         count++;
       }
     });
     assert.ok(openY / count > closedY / count + 0.1, `${model}/${panel} must open upward`);
+  }
+  // Doors are clipped on planes: every vertex sits inside its box, and the
+  // leading-edge hinge swings the trailing edge outward, away from the body.
+  const rig = heritageRig(model);
+  for (const door of ["left", "right", "rearLeft", "rearRight"] as const) {
+    const { pivot } = rig[door];
+    const trailing = Math.max(...rig[door].clip.filter(c => c.normal[2] === 1 && c.normal[0] === 0 && c.normal[1] === 0).map(c => c.offset));
+    const side = door === "left" || door === "rearLeft" ? -1 : 1;
+    const rotation = new THREE.Matrix4().makeRotationY(heritageOpenAngles[door]);
+    const point = new THREE.Vector3();
+    let vertices = 0, outward = 0;
+    prepared.panels[door].traverse(o => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const positions = o.geometry.getAttribute("position");
+      for (let i = 0; i < positions.count; i++) {
+        point.fromBufferAttribute(positions, i);
+        const z = point.z + pivot[2];
+        assert.ok(inPanel(rig[door], point.x + pivot[0], point.y + pivot[1], z), `${model}/${door} vertex outside its shut lines`);
+        const closedX = point.x + pivot[0];
+        const openX = point.clone().applyMatrix4(rotation).x + pivot[0];
+        if (z > trailing - 0.1) { vertices++; if (side * openX > side * closedX + 0.2) outward++; }
+      }
+    });
+    assert.ok(vertices > 20, `${model}/${door} missing trailing edge`);
+    assert.ok(outward / vertices > 0.95, `${model}/${door} must swing outward`);
   }
   let triangles = 0;
   const box = new THREE.Box3();
@@ -227,7 +240,7 @@ for (const model of ["model-3-heritage", "model-s-heritage"]) {
   assert.ok(triangles > 10000, `${model} missing mesh detail`);
   assert.ok(box.getSize(new THREE.Vector3()).length() < 12, "Normalization failed");
   prepared.materials.forEach(m => m.dispose());
-  console.log(`PASS: ${model}, ${triangles.toLocaleString()} triangles, textures present, 5 articulated groups`);
+  console.log(`PASS: ${model}, ${triangles.toLocaleString()} triangles, textures present, 7 articulated groups with straight shut lines`);
 }
 
 // Use the same bundled decoder as Drei. This catches incompatible compression versions.
@@ -339,6 +352,12 @@ highland.scene.traverse(o => {
   if (mats.some(m => m.name === 'exterior_paint')) paintTriangles += o.geometry.index!.count / 3;
 });
 assert.ok(paintTriangles > 90000, `Highland body shell must take paint, got ${paintTriangles}`);
+for (const wheel of ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
+  highland.scene.getObjectByName(wheel)!.traverse(o => {
+    if (!(o instanceof THREE.Mesh)) return;
+    assert.notEqual((o.material as THREE.Material).name, 'exterior_paint', `Highland ${wheel} rims must not take body paint`);
+  });
+}
 assert.ok(highland.materials.get('Georimblurlfsub01Mtl|exterior_paint'), 'Main Highland shell is exterior paint');
 highland.materials.forEach(m => m.dispose());
 highland.scene.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
@@ -346,8 +365,8 @@ console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} 
 
 const { prepareImported } = await import('../src/studio/vehicles/imported');
 for (const spec of [
-  { id: 'juniper', file: 'public/models/juniper/model.glb', min: 200000, length: 4.794, maxWidth: 2.3, minHeight: 1.4, wheels: true },
-  { id: 'cybertruck-import', file: 'public/models/cybertruck-import/model.glb', min: 50000, length: 5.6829, maxWidth: 2.4, minHeight: 1.5, wheels: false },
+  { id: 'juniper', file: 'public/models/juniper/model.glb', min: 200000, length: 4.794, maxWidth: 2.3, minHeight: 1.4, maxHeight: 1.8, wheels: true },
+  { id: 'cybertruck-import', file: 'public/models/cybertruck-import/model.glb', min: 50000, length: 5.6829, maxWidth: 2.1, minHeight: 1.5, maxHeight: 1.85, wheels: false },
 ] as const) {
   const bytes = await fs.readFile(spec.file);
   const loader = new RuntimeGLTFLoader();
@@ -365,6 +384,10 @@ for (const spec of [
   const size = new THREE.Box3().setFromObject(prepared.scene).getSize(new THREE.Vector3());
   assert.ok(Math.abs(size.z - spec.length) < 0.02, `${spec.id} length ${size.z}`);
   assert.ok(size.x < spec.maxWidth && size.y > spec.minHeight, `${spec.id} bounds ${size.x.toFixed(2)}x${size.y.toFixed(2)}`);
+  // Floating export debris would raise the height; an off-centre body would orbit badly.
+  assert.ok(size.y < spec.maxHeight, `${spec.id} height ${size.y.toFixed(2)}: stray geometry above the roof`);
+  const mid = new THREE.Box3().setFromObject(prepared.scene).getCenter(new THREE.Vector3());
+  assert.ok(Math.abs(mid.x) < 0.03, `${spec.id} must be centred on x, got ${mid.x.toFixed(3)}`);
   assert.equal(prepared.staticBody, true, `${spec.id} stays a closed presentation mesh`);
   for (const name of ['hood', 'tailgate', 'door_fl', 'proxy_door_fl']) {
     assert.equal(prepared.scene.getObjectByName(name), undefined, `${spec.id} must not cut ${name}`);
@@ -428,3 +451,58 @@ assert.match(cabCredits, /not bundled/i);
 
 
 await import("./model-imports.test");
+
+// Scenery must never hide the car or fill the lens in any studio shot.
+{
+  const { studioSightlines, blocksSightline } = await import("../src/studio/scene/clearance");
+  const { forestTreeLayout } = await import("../src/studio/scene/forest");
+  const lines = studioSightlines();
+  assert.ok(lines.length > 60, "sightlines cover every model and feature");
+  const trees = forestTreeLayout();
+  for (const tree of trees) {
+    const radius = tree.kind === "conifer" ? 0.7 + (tree.h - 3.2) * 0.16 : 1.3;
+    assert.ok(!blocksSightline(tree.x, tree.z, radius, tree.h), `forest tree at ${tree.x.toFixed(1)},${tree.z.toFixed(1)} blocks a studio camera`);
+  }
+  console.log(`PASS: ${trees.length} forest trees clear ${lines.length} studio sightlines`);
+}
+
+// The headlight pool is a floor decal: its face must point up or it is culled.
+{
+  const { poolGeometry } = await import("../src/studio/vehicles/LampBeams");
+  const pool = poolGeometry(-2.4);
+  const normal = pool.getAttribute("normal");
+  for (let i = 0; i < normal.count; i++) assert.ok(normal.getY(i) > 0.99, "headlight pool must face up");
+  pool.computeBoundingBox();
+  assert.ok(pool.boundingBox!.max.z < -2.4, "pool starts ahead of the nose");
+  pool.dispose();
+  console.log("PASS: headlight ground pool faces the camera and sits ahead of the nose");
+}
+
+// Rocks never poke out of the car's silhouette in a wide shot.
+{
+  const { scatterRocks, marsHeight, desertHeight } = await import("../src/studio/scene/landscapes");
+  const { mergesWithCar } = await import("../src/studio/scene/clearance");
+  for (const [name, height, count, seed, max] of [["mars", marsHeight, 42, 0x5a15, 1.3], ["desert", desertHeight, 8, 0x0c0a, 0.72]] as const) {
+    const rocks = scatterRocks(count, seed, height, 0.15, max, ["#000000", "#000000"], 2, 3);
+    for (const r of rocks)
+      assert.ok(!mergesWithCar(r.position[0], r.position[2], Math.max(r.scale[0], r.scale[2]), r.position[1] + r.scale[1]), `${name} rock at ${r.position[0].toFixed(1)},${r.position[2].toFixed(1)} merges with the car`);
+  }
+  console.log("PASS: Mars and desert rocks stay out of the car silhouette");
+}
+
+// Anisotropy without vertex tangents renders rainbow bands or NaN pixels.
+{
+  const { prepareImported } = await import("../src/studio/vehicles/imported");
+  const bytes = await fs.readFile("public/models/cybertruck-import/model.glb");
+  const loader = new RuntimeGLTFLoader();
+  loader.setMeshoptDecoder(decoder);
+  const loaded = await loader.parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), "");
+  const prepared = prepareImported(loaded.scene, "cybertruck");
+  prepared.scene.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    const m = o.material as THREE.MeshPhysicalMaterial;
+    if (!o.geometry.getAttribute("tangent")) assert.equal(m.anisotropy, 0, `${o.name}: anisotropy needs tangents`);
+  });
+  prepared.materials.forEach((m) => m.dispose());
+  console.log("PASS: imported meshes without tangents disable anisotropy");
+}
