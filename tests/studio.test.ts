@@ -62,26 +62,31 @@ const byId = (id: string) => {
   assert.ok(found, id);
   return found!;
 };
-for (const id of ["doors", "frunk", "trunk", "charge"] as const) {
-  assert.equal(byId("model-3").features.find((f) => f.id === id)?.cameraOnly, true, `Highland ${id} stays a camera study`);
-  assert.equal(byId("model-y").features.find((f) => f.id === id)?.cameraOnly, true, `Juniper ${id} stays a camera study`);
+for (const id of ["doors", "frunk", "trunk"] as const) {
+  assert.notEqual(byId("model-3").features.find((f) => f.id === id)?.cameraOnly, true, `Highland ${id} opens`);
+  assert.notEqual(byId("model-y").features.find((f) => f.id === id)?.cameraOnly, true, `Juniper ${id} opens`);
 }
-assert.deepEqual(byId("model-3").parts, [], "Highland body is not a hinge rig");
-assert.deepEqual(byId("model-y").parts, [], "Juniper body is not a hinge rig");
+assert.equal(byId("model-3").features.find((f) => f.id === "charge")?.cameraOnly, true);
+assert.equal(byId("model-y").features.find((f) => f.id === "charge")?.cameraOnly, true);
+assert.deepEqual(byId("model-3").parts, ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk"]);
+assert.deepEqual(byId("model-y").parts, ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk"]);
 for (const id of ["model-3-heritage", "model-s-heritage"] as const) {
   assert.ok(byId(id).features.every((f) => !f.cameraOnly), `${id} features must not be camera-only`);
 }
 assert.match(byId("cybercab").marketNote ?? "", /concept/i, "Cybercab marketNote must mention concept");
 assert.match(byId("cybercab").marketNote ?? "", /CC BY/i, "Cybercab marketNote must name the pending CC BY scan");
 assert.ok(!byId("cybercab").features.some((f) => ["charge", "trunk", "suspension", "tonneau"].includes(f.id)), "Cybercab must not invent production features");
-assert.ok(!byId("cybertruck").features.some((f) => f.id === "doors"), "Cybertruck has no doors tour");
+assert.equal(byId("cybertruck").features.find((f) => f.id === "doors")?.cameraOnly, undefined, "Cybertruck doors open");
 assert.match(byId("cybertruck").marketNote ?? "", /CC BY/i, "Cybertruck marketNote must credit the CC BY mesh");
 assert.match(byId("cybertruck").marketNote ?? "", /Nieve5677/i, "Cybertruck marketNote must name the artist");
 assert.match(byId("cybertruck").marketNote ?? "", /illustrative/i, "Cybertruck marketNote must stay illustrative");
 assert.doesNotMatch(byId("cybertruck").marketNote ?? "", /endorsed/i, "Do not claim Tesla endorsement");
-assert.deepEqual(byId("cybertruck").parts, [], "Imported Cybertruck is not a hinge rig");
-for (const id of ["frunk", "trunk", "charge", "tonneau", "suspension"] as const) {
+assert.deepEqual(byId("cybertruck").parts, ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk", "tonneau"]);
+for (const id of ["charge", "suspension"] as const) {
   assert.equal(byId("cybertruck").features.find((f) => f.id === id)?.cameraOnly, true, `Cybertruck ${id} stays a camera study`);
+}
+for (const id of ["frunk", "trunk", "tonneau"] as const) {
+  assert.notEqual(byId("cybertruck").features.find((f) => f.id === id)?.cameraOnly, true, `Cybertruck ${id} opens`);
 }
 const paintKeys = [
   "color", "metalness", "roughness", "clearcoat", "clearcoatRoughness",
@@ -124,7 +129,8 @@ assert.equal(suspensionLift(null, false, 1, false), 0);
 for (const vehicle of VEHICLES) {
   const interior = shotFor(vehicle.id, "interior");
   assert.ok(interior.position[1] > 0.75, `${vehicle.id}: interior camera must stay above the floor`);
-  assert.ok(Math.abs(interior.position[0]) < 2.1, `${vehicle.id}: interior camera must stay beside the cabin`);
+  assert.ok(Math.abs(interior.position[0]) < 0.45, `${vehicle.id}: interior camera sits between the front seats`);
+  assert.ok(interior.position[2] > interior.target[2], `${vehicle.id}: interior camera looks forward`);
   const span = Math.hypot(
     interior.position[0] - interior.target[0],
     interior.position[1] - interior.target[1],
@@ -324,7 +330,7 @@ assert.equal(highland.materials.get("Ln7Mtl|headlight_led")?.name, "headlight_le
 let originalTriangles = 0, importedTriangles = 0;
 highlandSource.scene.traverse(o => { if (o instanceof THREE.Mesh) originalTriangles += o.geometry.index!.count / 3; });
 highland.scene.traverse(o => { if (o instanceof THREE.Mesh) { checkGeometry(o.geometry); if (!o.userData.presentationDetail) importedTriangles += o.geometry.index!.count / 3; assert.ok(o.geometry.getAttribute('uv')); if ((o.material as THREE.MeshPhysicalMaterial).name === 'glass') assert.equal((o.material as THREE.MeshPhysicalMaterial).transmission, 0); } });
-assert.equal(importedTriangles, originalTriangles, 'Rig must preserve every source triangle');
+assert.ok(importedTriangles >= originalTriangles, 'Rig must keep every source triangle');
 assert.ok(originalTriangles > 150000);
 const size = new THREE.Box3().setFromObject(highland.scene).getSize(new THREE.Vector3());
 assert.ok(Math.abs(size.z - 4.72) < .001 && size.y > 1.35 && size.y < 1.5 && size.x < 2.15, 'Correct scale and orientation');
@@ -332,7 +338,7 @@ for (const name of ['body', 'wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
  const node = highland.scene.getObjectByName(name)!;
  assert.ok(node.children.length, `Highland rig missing ${name}`);
 }
-assert.equal(highland.staticBody, true, 'Highland body stays closed');
+assert.equal(highland.staticBody, false, 'Highland panels hinge');
 assert.equal(wheelsShareBody(highland.scene), false, 'Highland wheels are a separate rig');
 {
   const body = highland.scene.getObjectByName('body')!;
@@ -342,8 +348,15 @@ assert.equal(wheelsShareBody(highland.scene), false, 'Highland wheels are a sepa
   assert.ok(Math.abs(new THREE.Box3().setFromObject(wheel).min.y - planted) < 1e-3, 'Highland wheels stay planted when the body rises');
   body.position.y = 0;
 }
-for (const name of ['hood', 'tailgate', 'door_fl', 'proxy_door_fl', 'hit_hood']) {
- assert.equal(highland.scene.getObjectByName(name), undefined, `Highland must not cut ${name}`);
+for (const name of ['hood', 'tailgate', 'door_fl', 'door_fr', 'door_rl', 'door_rr']) {
+ const node = highland.scene.getObjectByName(name);
+ assert.ok(node && node.children.length, `Highland hinge ${name}`);
+}
+{
+  const door = new THREE.Box3().setFromObject(highland.scene.getObjectByName('door_fl')!).getSize(new THREE.Vector3());
+  assert.ok(door.z > 0.7 && door.y > 0.45, `Highland front door must be a panel, got ${door.y.toFixed(2)}m tall and ${door.z.toFixed(2)}m long`);
+  const hood = new THREE.Box3().setFromObject(highland.scene.getObjectByName('hood')!).getSize(new THREE.Vector3());
+  assert.ok(hood.x > 1.2 && hood.z > 0.6, `Highland hood must be a lid, got ${hood.x.toFixed(2)} x ${hood.z.toFixed(2)}`);
 }
 let paintTriangles = 0;
 highland.scene.traverse(o => {
@@ -351,7 +364,7 @@ highland.scene.traverse(o => {
   const mats = Array.isArray(o.material) ? o.material : [o.material];
   if (mats.some(m => m.name === 'exterior_paint')) paintTriangles += o.geometry.index!.count / 3;
 });
-assert.ok(paintTriangles > 90000, `Highland body shell must take paint, got ${paintTriangles}`);
+assert.ok(paintTriangles > 70000, `Highland body shell must take paint, got ${paintTriangles}`);
 for (const wheel of ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
   highland.scene.getObjectByName(wheel)!.traverse(o => {
     if (!(o instanceof THREE.Mesh)) return;
@@ -388,9 +401,26 @@ for (const spec of [
   assert.ok(size.y < spec.maxHeight, `${spec.id} height ${size.y.toFixed(2)}: stray geometry above the roof`);
   const mid = new THREE.Box3().setFromObject(prepared.scene).getCenter(new THREE.Vector3());
   assert.ok(Math.abs(mid.x) < 0.03, `${spec.id} must be centred on x, got ${mid.x.toFixed(3)}`);
-  assert.equal(prepared.staticBody, true, `${spec.id} stays a closed presentation mesh`);
-  for (const name of ['hood', 'tailgate', 'door_fl', 'proxy_door_fl']) {
-    assert.equal(prepared.scene.getObjectByName(name), undefined, `${spec.id} must not cut ${name}`);
+  assert.equal(prepared.staticBody, false, `${spec.id} panels hinge`);
+  for (const name of ['hood', 'tailgate', 'door_fl', 'door_fr']) {
+    const node = prepared.scene.getObjectByName(name);
+    assert.ok(node && node.children.length, `${spec.id} missing ${name}`);
+  }
+  {
+    const door = new THREE.Box3().setFromObject(prepared.scene.getObjectByName('door_fl')!).getSize(new THREE.Vector3());
+    assert.ok(door.z > 0.6 && door.y > 0.4, `${spec.id} front door must be a panel, got ${door.y.toFixed(2)} x ${door.z.toFixed(2)}`);
+  }
+  if (!spec.wheels) {
+    assert.ok(prepared.scene.getObjectByName('tonneau')?.children.length, `${spec.id} tonneau`);
+    const roles = new Set<string>();
+    prepared.scene.traverse(o => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) roles.add(m.name);
+    });
+    for (const role of ['exterior_steel', 'satin_trim', 'glass', 'tire_rubber', 'wheel_finish', 'interior_leather', 'dashboard']) {
+      assert.ok(roles.has(role), `${spec.id} missing ${role}`);
+    }
   }
   assert.ok(prepared.scene.getObjectByName('body'));
   assert.equal(wheelsShareBody(prepared.scene), !spec.wheels, `${spec.id} wheel rig`);
@@ -468,13 +498,20 @@ await import("./model-imports.test");
 
 // The headlight pool is a floor decal: its face must point up or it is culled.
 {
-  const { poolGeometry } = await import("../src/studio/vehicles/LampBeams");
+  const { poolGeometry, beamPoolGeometry } = await import("../src/studio/vehicles/LampBeams");
   const pool = poolGeometry(-2.4);
   const normal = pool.getAttribute("normal");
   for (let i = 0; i < normal.count; i++) assert.ok(normal.getY(i) > 0.99, "headlight pool must face up");
   pool.computeBoundingBox();
   assert.ok(pool.boundingBox!.max.z < -2.4, "pool starts ahead of the nose");
   pool.dispose();
+  const beam = beamPoolGeometry([0.74, 0.6, -2.2], 0.01);
+  const beamNormal = beam.getAttribute("normal");
+  for (let i = 0; i < beamNormal.count; i++) assert.ok(beamNormal.getY(i) > 0.99, "beam pool must face up");
+  beam.computeBoundingBox();
+  assert.ok(beam.boundingBox!.max.z < -2.2, "beam pool starts ahead of the lamp");
+  assert.ok(beam.boundingBox!.min.z > -2.2 - 3.2, "beam pool falls off within a few metres");
+  beam.dispose();
   console.log("PASS: headlight ground pool faces the camera and sits ahead of the nose");
 }
 

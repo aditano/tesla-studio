@@ -535,9 +535,9 @@ export function Studio() {
                 ))}
               </div>
               <p className="feature-note">
-                Select a feature to move the camera. Cybercab and the heritage
-                cars also open their panels. Highland, Juniper and Cybertruck
-                stay closed.
+                Select a feature to move the camera and open that panel. Charge
+                ports stay a camera study, and Cybertruck air suspension does
+                not lift the body.
               </p>
             </div>
           )}
@@ -646,12 +646,12 @@ export function Studio() {
                 </p>
                 <p>
                   Highland, Juniper, and Cybertruck use licensed artist meshes.
-                  Those bodies stay closed, and panel tours move the camera
-                  instead of cutting the paint. Cybertruck is the Nieve5677
+                  Doors, hoods and rear openings are cut along their shut lines
+                  and swing on those hinges. Cybertruck is the Nieve5677
                   Sketchfab model under CC BY 4.0, scaled to the owner-manual
                   length. Air suspension stays a camera study: the tires are part of
                   that shell, so the body is not raised.
-                  Cybercab is an original authored concept study used because
+                  Cybercab is a rebuilt original concept study used because
                   the CC BY scan could not be downloaded without a Sketchfab
                   account. It is not a production specification. Paint and
                   wheel names follow the North America 2026 Design Studio;

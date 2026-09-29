@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { addFrunkTub, articulate, panelSpecs } from "./articulate";
 
 function highlandRole(name: string, x: number, y: number, z: number) {
   let role = name;
@@ -16,7 +17,10 @@ function highlandRole(name: string, x: number, y: number, z: number) {
     else if (z > -0.6) role = "interior_leather";
   }
   if (name === "Geodoorl2intsub651Mtl") role = "interior_leather";
-  if (name === "Geodoorlintsub400251Mtl") role = "interior_leather";
+  // Blue export band behind the screen. Highland dashes are textile, not that blue.
+  if (name === "Geodoorlintsub400251Mtl") role = "dashboard";
+  if (name === "Geocockpithrsub1031Mtl") role = "carpet";
+  if (name === "Geocockpithrsub000921Mtl") role = "display";
   if (
     /Georimblurlfsub01/.test(name) &&
     Math.abs(x) < 0.63 &&
@@ -62,6 +66,42 @@ function treatHighland(material: THREE.MeshPhysicalMaterial, name: string, role:
     material.sheenRoughness = 0.4;
     material.sheenColor.set("#c8c4bc");
     material.envMapIntensity = 0.6;
+  }
+  if (role === "dashboard") {
+    material.map = null;
+    material.color.set("#1c1e22");
+    material.metalness = 0.04;
+    material.roughness = 0.62;
+    material.envMapIntensity = 0.35;
+    material.emissive.set("#000000");
+    material.emissiveIntensity = 0;
+  }
+  if (role === "carpet") {
+    material.map = null;
+    material.color.set("#16181c");
+    material.metalness = 0;
+    material.roughness = 0.94;
+    material.envMapIntensity = 0.12;
+  }
+  if (role === "headliner") {
+    material.map = null;
+    material.color.set("#d5d0c8");
+    material.metalness = 0;
+    material.roughness = 0.86;
+    material.envMapIntensity = 0.2;
+    material.emissive.set("#000000");
+    material.emissiveIntensity = 0;
+  }
+  if (role === "display") {
+    material.map = null;
+    material.color.set("#10181c");
+    material.emissive.set("#7eb8c4");
+    material.emissiveIntensity = 0.85;
+    material.metalness = 0.02;
+    material.roughness = 0.42;
+    material.envMapIntensity = 0.25;
+    material.transparent = false;
+    material.opacity = 1;
   }
   if (role === "glass" || role === "lamp_lens" || material.transparent) {
     material.transparent = true;
@@ -160,6 +200,20 @@ export function prepareHighland(source: THREE.Group) {
         (axis) =>
           ids.reduce((sum, j) => sum + (pos as any)["get" + axis](j), 0) / 3,
       );
+      const normalAttr = geometry.getAttribute("normal");
+      let nx = 0;
+      let ny = 0;
+      let nz = 0;
+      if (normalAttr) {
+        for (const j of ids) {
+          nx += normalAttr.getX(j);
+          ny += normalAttr.getY(j);
+          nz += normalAttr.getZ(j);
+        }
+        nx /= 3;
+        ny /= 3;
+        nz /= 3;
+      }
       let part = "body";
       const wheelMaterial =
         /Tire1|Georimblurlfsub021/.test(name) ||
@@ -175,6 +229,24 @@ export function prepareHighland(source: THREE.Group) {
       // The wheel faces share the body-shell material. Inside a wheel group
       // they are rims, not bodywork, and must not take the paint colour.
       if (part !== "body" && role === "exterior_paint") role = "wheel_finish";
+      // Cabin faces of the red shell. Outer door, hood and deck skin stay paint.
+      if (
+        role === "exterior_paint" &&
+        Math.abs(x) < 0.84 &&
+        y > 0.24 &&
+        y < 1.34 &&
+        z > -0.98 &&
+        z < 1.45 &&
+        !(ny > 0.4 && y > 0.7)
+      ) {
+        const facesOut = Math.sign(x) * nx > 0.35 && Math.abs(x) > 0.7 && Math.abs(ny) < 0.45;
+        if (!facesOut) {
+          if (y < 0.55) role = "carpet";
+          else if (y > 1.14) role = "headliner";
+          else if (z < -0.05 && y < 1.08) role = "dashboard";
+          else role = "interior_leather";
+        }
+      }
       const key = part + "|" + role;
       const list = buckets.get(key) ?? [];
       list.push(...ids);
@@ -233,10 +305,72 @@ export function prepareHighland(source: THREE.Group) {
   spoiler.add(lip);
   body.add(spoiler);
   spoiler.visible = false;
+  articulate(body, panelSpecs("model-3"));
+  const tailgate = body.getObjectByName("tailgate");
+  if (tailgate) tailgate.attach(spoiler);
+  addFrunkTub(body, [0, 0.58, -1.55], [1.12, 0.14, 0.72]);
+  addCargoFloor(body, materials, [0, 0.42, 1.55], [1.15, 0.05, 0.7]);
+  addHighlandCabin(body, materials);
   return {
     scene,
     materials,
     ownsGeometry: true,
-    staticBody: true,
+    staticBody: false,
   };
+}
+
+function coverMaterial(
+  materials: Map<string, THREE.MeshPhysicalMaterial>,
+  name: string,
+  color: string,
+  roughness: number,
+) {
+  let material = materials.get(name);
+  if (!material) {
+    material = new THREE.MeshPhysicalMaterial({
+      color,
+      roughness,
+      metalness: 0,
+    });
+    material.name = name;
+    materials.set(name, material);
+  }
+  return material;
+}
+
+function addCargoFloor(
+  body: THREE.Group,
+  materials: Map<string, THREE.MeshPhysicalMaterial>,
+  center: [number, number, number],
+  size: [number, number, number],
+) {
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(...size),
+    coverMaterial(materials, "cargo_floor", "#14161a", 0.94),
+  );
+  floor.position.set(...center);
+  floor.name = "cargo_floor";
+  floor.userData.presentationDetail = true;
+  floor.userData.noPanel = true;
+  floor.receiveShadow = true;
+  body.add(floor);
+}
+
+/** Close-up cabin surfaces. The artist shell is painted on the inside, so a
+ * textile dash pad and a carpet sit over those faces. */
+function addHighlandCabin(
+  body: THREE.Group,
+  materials: Map<string, THREE.MeshPhysicalMaterial>,
+) {
+  const carpet = coverMaterial(materials, "cabin_carpet", "#16181c", 0.95);
+  carpet.name = "carpet";
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 2.15), carpet);
+  floor.position.set(0, 0.38, -0.05);
+  floor.name = "highland_floor";
+  floor.userData.presentationDetail = true;
+  floor.userData.noPanel = true;
+  floor.userData.cabin = true;
+  floor.castShadow = true;
+  floor.receiveShadow = true;
+  body.add(floor);
 }
