@@ -3,7 +3,8 @@ import { useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { paintParams } from "../materials";
+import { applyExteriorPaint, applyInteriorFinish } from "../materials";
+import { addCabinKit, applyDisplay } from "./cabin";
 import type { Interior, Paint, PartId, Variant } from "../catalog";
 import { useStudio } from "../store";
 import { LampBeams } from "./LampBeams";
@@ -360,6 +361,11 @@ export function prepareHeritage(source: THREE.Group, model: string) {
     }
     geometry.dispose();
   });
+  addCabinKit(
+    panels.fixed,
+    materials,
+    model === "model-s-heritage" ? "heritage-s" : "heritage-3",
+  );
   return { panels, materials };
 }
 
@@ -410,6 +416,7 @@ export function HeritageVehicle({
   );
   const prepared = useMemo(() => prepareHeritage(scene, model), [scene, model]);
   const feature = useStudio((s) => s.demoFeature);
+  const view = useStudio((s) => s.feature);
   const open = useStudio((s) => s.open);
   const lights = useStudio((s) => s.lightsOn);
   const refs = useRef<Partial<Record<Panel, THREE.Group>>>({});
@@ -417,14 +424,15 @@ export function HeritageVehicle({
     prepared.materials.forEach((mat, name) => {
       const is3 = model === "model-3-heritage";
       const body = is3 ? name === "CAR_PAINT" : name === "material_9";
-      if (body) {
-        Object.assign(mat, paintParams(paint), {
-          color: new THREE.Color(paint.hex),
-          sheenColor: new THREE.Color(paint.flake ?? "#ffffff"),
-        });
-      }
-      if ((is3 && name === "Material.015") || (!is3 && name === "material"))
-        mat.color.set(interior.leather);
+      if (body) applyExteriorPaint(mat, paint);
+      if (
+        (is3 && name === "Material.015") ||
+        (!is3 && name === "material") ||
+        mat.name === "interior_leather"
+      )
+        applyInteriorFinish(mat, interior);
+      if (mat.name === "display")
+        applyDisplay(mat, mat.userData.screen === "cluster" ? "cluster" : "portrait");
       if ((is3 && name === "Material.014") || (!is3 && name === "Material.008"))
         mat.color.set(variant.caliper);
       if ((is3 && name === "Material.011") || name === "Rims") {
@@ -481,7 +489,10 @@ export function HeritageVehicle({
       }
       mat.needsUpdate = true;
     });
-  }, [prepared, paint, interior, variant, lights, model]);
+    prepared.panels.fixed.traverse((o) => {
+      if (o.name.startsWith("heritage_")) o.visible = view === "interior";
+    });
+  }, [prepared, paint, interior, variant, lights, model, view]);
   useEffect(
     () => () => {
       Object.values(prepared.panels).forEach((g) =>

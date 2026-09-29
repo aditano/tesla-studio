@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { addFrunkTub, articulate, panelSpecs } from "./articulate";
+import { addCabinKit } from "./cabin";
 const KNOWN_ROLES = new Set([
   "exterior_paint",
   "exterior_steel",
@@ -366,7 +367,8 @@ export function prepareImported(source: THREE.Group, model: string) {
 
   if (model === "juniper" || model === "model-y")
     addPerformanceSpoiler(body, materials);
-  if (model.startsWith("cybertruck")) addCybertruckCabin(body, materials);
+  if (model.startsWith("cybertruck")) addCabinKit(body, materials, "cybertruck");
+  if (model === "juniper" || model === "model-y") addCabinKit(body, materials, "juniper");
 
   const specs = panelSpecs(model);
   if (specs.length) {
@@ -579,83 +581,6 @@ function segmentCybertruckShell(
   }
 }
 
-function addCybertruckCabin(
-  body: THREE.Group,
-  materials: Map<string, THREE.MeshPhysicalMaterial>,
-) {
-  const make = (name: string, color: string, roughness: number, metalness = 0) => {
-    const key = "cybertruck-cabin|" + name;
-    let material = materials.get(key);
-    if (material) return material;
-    material = new THREE.MeshPhysicalMaterial({ color, roughness, metalness });
-    material.name = name;
-    materials.set(key, material);
-    return material;
-  };
-  const leather = make("interior_leather", "#1a1c1f", 0.72);
-  const dashMat = make("dashboard", "#1c1e22", 0.72, 0.04);
-  const carpet = make("carpet", "#121418", 0.95);
-  const screen = make("display", "#10181c", 0.35, 0.02);
-  screen.emissive.set("#7eb8c4");
-  screen.emissiveIntensity = 0.9;
-  const trim = make("satin_trim", "#14171c", 0.55, 0.12);
-  const add = (mesh: THREE.Mesh, name: string) => {
-    mesh.name = name;
-    mesh.userData.cabin = true;
-    mesh.userData.noPanel = true;
-    mesh.userData.presentationDetail = true;
-    mesh.castShadow = mesh.receiveShadow = true;
-    body.add(mesh);
-  };
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.03, 1.7), carpet);
-  floor.position.set(0, 0.52, -0.05);
-  add(floor, "cybertruck_cabin_floor");
-  const liner = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.03, 1.35), dashMat);
-  liner.position.set(0, 1.56, -0.05);
-  add(liner, "cybertruck_cabin_headliner");
-  for (const x of [-0.32, 0.32]) {
-    const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.36), leather);
-    cushion.position.set(x, 0.74, -0.22);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.38, 0.07), leather);
-    back.position.set(x, 1.0, -0.28);
-    back.rotation.x = 0.08;
-    add(cushion, x < 0 ? "cybertruck_cabin_cushion_l" : "cybertruck_cabin_cushion_r");
-    add(back, x < 0 ? "cybertruck_cabin_back_l" : "cybertruck_cabin_back_r");
-  }
-  const console = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.42), dashMat);
-  console.position.set(0, 0.7, -0.12);
-  add(console, "cybertruck_cabin_console");
-  const dash = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.46, 0.05), dashMat);
-  dash.position.set(0, 0.98, -0.42);
-  add(dash, "cybertruck_cabin_dash");
-  const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.2, 0.012), dashMat);
-  bezel.position.set(0.12, 1.04, -0.4);
-  bezel.rotation.x = -0.12;
-  add(bezel, "cybertruck_cabin_bezel");
-  const display = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.14, 0.012), screen);
-  display.position.set(0.12, 1.04, -0.388);
-  display.rotation.x = -0.12;
-  add(display, "cybertruck_cabin_screen");
-  const yoke = new THREE.Group();
-  yoke.name = "cybertruck_cabin_yoke";
-  yoke.position.set(-0.2, 0.97, -0.32);
-  yoke.rotation.x = 0.18;
-  const top = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.035, 0.024), trim);
-  const bottom = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.024), trim);
-  bottom.position.y = -0.12;
-  const left = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.13, 0.024), trim);
-  left.position.set(-0.11, -0.06, 0);
-  const right = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.13, 0.024), trim);
-  right.position.set(0.11, -0.06, 0);
-  yoke.add(top, bottom, left, right);
-  yoke.userData.cabin = true;
-  yoke.userData.noPanel = true;
-  yoke.userData.presentationDetail = true;
-  yoke.traverse((child) => {
-    if (child instanceof THREE.Mesh) child.castShadow = child.receiveShadow = true;
-  });
-  body.add(yoke);
-}
 
 function addCybertruckTailBar(
   body: THREE.Group,

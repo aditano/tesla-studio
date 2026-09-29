@@ -19,7 +19,8 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import * as THREE from "three";
 import { useStudio } from "../store";
 import { ActiveVehicle } from "../vehicles/ActiveVehicle";
-import { backdropById, type Backdrop } from "./backdrops";
+import { backdropById, lightRig, type Backdrop } from "./backdrops";
+import { fillGroundImage } from "./ground";
 import { BackdropScenery } from "./scenery";
 import { StudioStage } from "./stage";
 
@@ -197,19 +198,17 @@ function StudioEnvironment({
       />
       <Lightformer
         form="rect"
-        intensity={day ? 1.05 : night ? 1.4 : 0.85}
-        position={[-8.2, 3.4, 0]}
-        rotation={[0, Math.PI / 2, 0]}
-        scale={[16, day ? 6 : 4.2, 1]}
-        color={night ? "#8aa3c2" : "#eef3ff"}
+        intensity={day ? 1.05 : night ? 1.4 : 1.15}
+        position={backdrop.keyPosition}
+        scale={[12, day ? 6 : 4.6, 1]}
+        color={backdrop.keyColor}
       />
       <Lightformer
         form="rect"
-        intensity={day ? 0.95 : night ? 1.15 : 0.7}
-        position={[8.2, 3.1, 0.4]}
-        rotation={[0, -Math.PI / 2, 0]}
-        scale={[15, day ? 5.4 : 3.6, 1]}
-        color={night ? "#c4b0a4" : "#fff6ec"}
+        intensity={day ? 0.7 : night ? 0.55 : 0.42}
+        position={backdrop.fillPosition}
+        scale={[14, 4.2, 1]}
+        color={backdrop.fillColor}
       />
       <Lightformer
         form="rect"
@@ -251,41 +250,42 @@ function StudioEnvironment({
 function OutdoorEnvironment({ backdrop }: { backdrop: Backdrop }) {
   return (
     <>
-      {/* Sized to stay above ~40 degrees elevation: a wider panel reaches the
-          hood's mirror direction from the overview camera and blows out a
-          hotspot on the clearcoat. */}
+      {/* Sky panel stays high so the hood mirror does not catch a white hotspot. */}
       <Lightformer
         form="rect"
-        intensity={backdrop.day ? 2.6 : 0.85}
-        position={[0, 10, 0]}
+        intensity={backdrop.day ? 2.2 : 0.7}
+        position={[0, 11, 0]}
         rotation={[Math.PI / 2, 0, 0]}
-        scale={[16, 12, 1]}
+        scale={[18, 14, 1]}
         color={backdrop.hemiSky}
       />
       <Lightformer
         form="rect"
-        intensity={1.6}
+        intensity={backdrop.day ? 2.4 : 1.35}
         position={backdrop.keyPosition}
-        scale={[10, 5, 1]}
+        scale={[9, 4.2, 1]}
         color={backdrop.keyColor}
       />
-      {/* Kept low on the horizon: at fill-light height this panel sits in the
-          hood's mirror direction from the overview camera and blows out a
-          white hotspot on the clearcoat. */}
       <Lightformer
         form="rect"
-        intensity={0.32}
-        position={[backdrop.fillPosition[0], 1.1, backdrop.fillPosition[2]]}
-        target={[0, 0.6, 0]}
-        scale={[8, 2.2, 1]}
+        intensity={0.45}
+        position={[backdrop.fillPosition[0], 2.4, backdrop.fillPosition[2]]}
+        scale={[11, 3.2, 1]}
         color={backdrop.fillColor}
       />
       <Lightformer
         form="rect"
-        intensity={0.35}
+        intensity={backdrop.day ? 0.55 : 0.28}
+        position={[0, 1.4, -14]}
+        scale={[28, 3.4, 1]}
+        color={backdrop.skyBottom}
+      />
+      <Lightformer
+        form="rect"
+        intensity={0.42}
         position={[0, -0.6, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
-        scale={[22, 22, 1]}
+        scale={[24, 24, 1]}
         color={backdrop.floor}
       />
     </>
@@ -306,14 +306,14 @@ function CabinFill() {
     <>
       <pointLight
         position={ceiling}
-        intensity={inside ? (model === "cybertruck" ? 0.4 : 0.55) : 0.2}
+        intensity={inside ? (model === "cybertruck" ? 1.15 : 0.55) : 0.2}
         distance={2.4}
         decay={2}
         color="#fff4e8"
       />
       <pointLight
         position={dash}
-        intensity={inside ? (model === "cybertruck" ? 0.08 : 0.28) : 0.08}
+        intensity={inside ? (model === "cybertruck" ? 0.85 : 0.28) : 0.08}
         distance={1.8}
         decay={2}
         color="#d5e7ef"
@@ -323,6 +323,7 @@ function CabinFill() {
 }
 function Lighting({ high }: { high: boolean }) {
   const backdrop = useBackdrop();
+  const rig = lightRig(backdrop);
   return (
     <>
       <color attach="background" args={[backdrop.background]} />
@@ -334,9 +335,9 @@ function Lighting({ high }: { high: boolean }) {
       />
       <CabinFill />
       <directionalLight
-        position={backdrop.keyPosition}
-        intensity={backdrop.keyIntensity}
-        color={backdrop.keyColor}
+        position={rig.key.position}
+        intensity={rig.key.intensity}
+        color={rig.key.color}
         castShadow
         shadow-mapSize={[high ? 2048 : 1024, high ? 2048 : 1024]}
         shadow-bias={-0.00018}
@@ -350,15 +351,15 @@ function Lighting({ high }: { high: boolean }) {
         shadow-camera-bottom={-8.5}
       />
       <directionalLight
-        position={backdrop.fillPosition}
-        intensity={backdrop.fillIntensity}
-        color={backdrop.fillColor}
+        position={rig.fill.position}
+        intensity={rig.fill.intensity}
+        color={rig.fill.color}
       />
-      {backdrop.rimIntensity > 0 && (
+      {rig.rim.intensity > 0 && (
         <directionalLight
-          position={backdrop.rimPosition}
-          intensity={backdrop.rimIntensity}
-          color={backdrop.rimColor}
+          position={rig.rim.position}
+          intensity={rig.rim.intensity}
+          color={rig.rim.color}
         />
       )}
       <Environment
@@ -441,29 +442,18 @@ function Floor({ high }: { high: boolean }) {
   }, []);
   const groundNoise = useMemo(() => {
     if (backdrop.mirror) return null;
-    const canvas = document.createElement("canvas");
-    canvas.width = canvas.height = 256;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    const image = ctx.createImageData(256, 256);
-    let seed = 0;
-    for (let i = 0; i < backdrop.id.length; i++) seed = seed * 33 + backdrop.id.charCodeAt(i);
-    const rnd = () => {
-      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-      return seed / 4294967296;
-    };
-    for (let i = 0; i < image.data.length; i += 4) {
-      const n = 168 + rnd() * 87;
-      image.data[i] = n;
-      image.data[i + 1] = n;
-      image.data[i + 2] = n;
-      image.data[i + 3] = 255;
-    }
-    ctx.putImageData(image, 0, 0);
-    const texture = new THREE.CanvasTexture(canvas);
+    const size = 512;
+    const data = new Uint8ClampedArray(size * size * 4);
+    fillGroundImage(backdrop.id, data, size);
+    const texture = new THREE.DataTexture(data, size, size);
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(5, 5);
-    texture.colorSpace = THREE.NoColorSpace;
+    texture.repeat.set(4, 4);
+    texture.magFilter = THREE.LinearFilter;
+    texture.minFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    texture.anisotropy = 8;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
     return texture;
   }, [backdrop.id, backdrop.mirror]);
   useEffect(() => () => floorMap.dispose(), [floorMap]);
@@ -523,10 +513,10 @@ function Floor({ high }: { high: boolean }) {
         >
           <circleGeometry args={[48, 64]} />
           <meshStandardMaterial
-            color={floor}
+            color="#ffffff"
             map={groundNoise ?? undefined}
-            roughness={0.94}
-            metalness={0.02}
+            roughness={0.92}
+            metalness={0.03}
           />
         </mesh>
       )}

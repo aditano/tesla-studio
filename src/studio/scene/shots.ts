@@ -69,7 +69,7 @@ const MODEL_SHOTS: Partial<Record<ModelId, Partial<Record<FeatureId | "overview"
     tonneau: { position: [4.2, 4.6, 6.0], target: [0, 1.4, 1.85] },
     charge: { position: [-3.6, 1.65, 4.0], target: [-0.95, 1.06, 2.38] },
     suspension: { position: [7.6, 1.55, -0.6], target: [0, 0.95, 0] },
-    interior: { position: [0, 0.98, 0.12], target: [0, 0.94, -0.4] },
+    interior: { position: [0, 1.12, 0.18], target: [0, 0.98, -0.62] },
     performance: { position: [4.8, 1.2, -3.6], target: [0.82, 0.48, -1.96] },
   },
   cybercab: {

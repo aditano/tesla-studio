@@ -63,7 +63,7 @@ button {
 }
 .vehicle-stage {
   position: absolute;
-  inset: 0 310px 0 0;
+  inset: 0 350px 0 0;
 }
 .studio-header {
   position: absolute;
@@ -627,6 +627,51 @@ strong {
 .sheet-handle {
   display: none;
 }
+@media (min-width: 768px) {
+  .sheet-handle {
+    display: flex;
+    position: absolute;
+    left: -16px;
+    top: 22px;
+    width: 16px;
+    height: 52px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px 0 0 6px;
+    background: #14171bf0;
+    border: 1px solid #ffffff18;
+    border-right: 0;
+  }
+  .sheet-handle span {
+    height: 22px;
+    width: 3px;
+    border-radius: 4px;
+    background: #ffffff66;
+  }
+  .sheet-closed .panel-tabs,
+  .sheet-closed .panel-content {
+    display: none;
+  }
+  .sheet-closed .control-panel {
+    width: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+  }
+  .sheet-closed .vehicle-stage {
+    right: 28px;
+  }
+  .sheet-closed .model-nav {
+    right: 48px;
+  }
+  .sheet-closed .sheet-handle {
+    left: auto;
+    right: 12px;
+    border-radius: 6px;
+    border: 1px solid #ffffff18;
+  }
+}
 .modal-backdrop {
   position: absolute;
   inset: 0;
@@ -767,7 +812,7 @@ strong {
 }
 @media (min-width: 1500px) {
   .vehicle-stage {
-    right: 340px;
+    right: 384px;
   }
   .control-panel {
     width: 330px;
@@ -788,7 +833,7 @@ strong {
     display: none;
   }
   .vehicle-stage {
-    right: 280px;
+    right: 308px;
   }
   .control-panel {
     width: 280px;

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { addFrunkTub, articulate, panelSpecs } from "./articulate";
+import { addCabinKit } from "./cabin";
 
 function highlandRole(name: string, x: number, y: number, z: number) {
   let role = name;
@@ -229,6 +230,16 @@ export function prepareHighland(source: THREE.Group) {
       // The wheel faces share the body-shell material. Inside a wheel group
       // they are rims, not bodywork, and must not take the paint colour.
       if (part !== "body" && role === "exterior_paint") role = "wheel_finish";
+      // The dash top points up, so the cabin box below left it as body paint.
+      const dashTop =
+        role === "exterior_paint" &&
+        ny > 0.35 &&
+        y > 0.72 &&
+        y < 1.12 &&
+        z > -0.8 &&
+        z < 0.2 &&
+        Math.abs(x) < 0.78;
+      if (dashTop) role = "dashboard";
       // Cabin faces of the red shell. Outer door, hood and deck skin stay paint.
       if (
         role === "exterior_paint" &&
@@ -311,6 +322,7 @@ export function prepareHighland(source: THREE.Group) {
   addFrunkTub(body, [0, 0.58, -1.55], [1.12, 0.14, 0.72]);
   addCargoFloor(body, materials, [0, 0.42, 1.55], [1.15, 0.05, 0.7]);
   addHighlandCabin(body, materials);
+  addCabinKit(body, materials, "highland");
   return {
     scene,
     materials,

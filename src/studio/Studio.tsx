@@ -421,9 +421,9 @@ export function Studio() {
               aria-labelledby="configure-tab"
             >
               <div className="section-label">
-                <span>01 / VARIANT</span>
+                <span>Variant</span>
                 <span>
-                  {String(def.variants.length).padStart(2, "0")} OPTIONS
+                  {def.variants.length} options
                 </span>
               </div>
               <div className="variant-options">
@@ -443,10 +443,10 @@ export function Studio() {
                 ))}
               </div>
               <div className="section-label">
-                <span>02 / EXTERIOR</span>
+                <span>Paint</span>
                 <span>{paint.name}</span>
               </div>
-              <div className="paint-options">
+              <div className="paint-options" role="group" aria-label="Paint">
                 {def.exteriors.map((p) => (
                   <button
                     key={p.id}
@@ -462,12 +462,12 @@ export function Studio() {
                 ))}
               </div>
               <div className="section-label">
-                <span>03 / INTERIOR</span>
+                <span>Interior</span>
                 <span>
                   {def.interiors.find((i) => i.id === s.interiorId)?.name}
                 </span>
               </div>
-              <div className="interior-options">
+              <div className="interior-options" role="group" aria-label="Interior">
                 {def.interiors.map((i) => (
                   <button
                     key={i.id}
@@ -544,7 +544,7 @@ export function Studio() {
           <div className="lighting-controls">
             <div className="section-label">
               <span>
-                <Sun size={13} /> ENVIRONMENT
+                <Sun size={13} /> Backdrop
               </span>
               <select
                 aria-label="Render quality"

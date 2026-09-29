@@ -2,15 +2,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { PAINT, VEHICLES, featuresForVehicle } from "../src/studio/catalog";
+import { INTERIORS, PAINT, VEHICLES, featuresForVehicle, lengthBand, vehicleById, type ModelId } from "../src/studio/catalog";
 import { vehicleGlb } from "../src/studio/vehicles/assets";
-import { glassParams, paintParams } from "../src/studio/materials";
+import { applyExteriorPaint, applyInteriorFinish, glassParams, paintParams, steelParams } from "../src/studio/materials";
 import { useStudio } from "../src/studio/store";
 import { SHOTS, frameShot, minOrbitDistance, shotDistance, shotFor } from "../src/studio/scene/shots";
 import { prefersHighQuality } from "../src/studio/scene/quality";
 import { suspensionLift, wheelsShareBody } from "../src/studio/vehicles/suspension";
 import { prepareHeritage, heritagePivot, heritageRig, heritageOpenAngles, inPanel } from "../src/studio/vehicles/HeritageVehicle";
-import { BACKDROPS } from "../src/studio/scene/backdrops";
+import { BACKDROPS, lightRig } from "../src/studio/scene/backdrops";
 {
   const ids = BACKDROPS.map((backdrop) => backdrop.id);
   assert.equal(new Set(ids).size, ids.length, "backdrop ids must be unique");
@@ -102,6 +102,77 @@ for (const paint of Object.values(PAINT)) {
 assert.equal(glassParams().transmission, 0);
 assert.equal(glassParams("#8fb4c8", 0.28, "lens").transmission, 0);
 console.log("PASS: paintParams API and glass transmission stay stable");
+
+{
+  useStudio.getState().setModel("model-3");
+  useStudio.getState().setExterior("pearl-white");
+  const pearl = vehicleById("model-3").exteriors.find((p) => p.id === useStudio.getState().exteriorId);
+  assert.ok(pearl);
+  useStudio.getState().setExterior("ultra-red");
+  const red = vehicleById("model-3").exteriors.find((p) => p.id === useStudio.getState().exteriorId);
+  assert.ok(red);
+  const body = new THREE.MeshPhysicalMaterial({ name: "exterior_paint" });
+  applyExteriorPaint(body, pearl!);
+  assert.equal(body.color.getHexString(), pearl!.hex.slice(1).toLowerCase());
+  applyExteriorPaint(body, red!);
+  assert.notEqual(body.color.getHexString(), pearl!.hex.slice(1).toLowerCase());
+  assert.equal(body.color.getHexString(), red!.hex.slice(1).toLowerCase());
+  const gloss = new THREE.MeshPhysicalMaterial();
+  const satin = new THREE.MeshPhysicalMaterial();
+  applyExteriorPaint(gloss, PAINT["diamond-black"]);
+  applyExteriorPaint(satin, PAINT["satin-black"]);
+  assert.ok(satin.roughness > gloss.roughness + 0.2, "satin paint stays softer than gloss");
+  assert.ok(gloss.clearcoat > satin.clearcoat, "gloss keeps a clearer coat than satin");
+  assert.notEqual(steelParams(PAINT.stainless).color.toLowerCase(), PAINT.stainless.hex.toLowerCase(), "bare stainless is not the wrap swatch");
+  assert.equal(steelParams(PAINT["satin-blue"]).color.toLowerCase(), PAINT["satin-blue"].hex.toLowerCase(), "a Cybertruck colour wraps the shell");
+  body.dispose();
+  gloss.dispose();
+  satin.dispose();
+  console.log("PASS: exterior selection changes body paint parameters");
+}
+
+{
+  const { horizonFor } = await import("../src/studio/scene/scenery");
+  const { disposeHorizon, makeHorizon } = await import("../src/studio/scene/horizon");
+  const { groundChroma } = await import("../src/studio/scene/ground");
+  const { paintSky, skyStops } = await import("../src/studio/scene/sky");
+  const signatures = new Set<string>();
+  for (const backdrop of BACKDROPS) {
+    const rig = lightRig(backdrop);
+    assert.ok(rig.key.intensity > rig.fill.intensity, `${backdrop.id}: key must be stronger than fill`);
+    assert.ok(rig.rim.intensity > 0, `${backdrop.id}: rim`);
+    assert.ok(rig.key.position[0] * rig.fill.position[0] < 0, `${backdrop.id}: key and fill sit on opposite sides`);
+    assert.ok(backdrop.beam > 0 && backdrop.pool > 0, `${backdrop.id}: headlights need a beam and a ground pool`);
+    const signature = [rig.key.intensity, rig.key.color, rig.fill.intensity, rig.fill.color, rig.rim.intensity, rig.rim.color].join("|");
+    assert.ok(!signatures.has(signature), `${backdrop.id} repeats another light rig`);
+    signatures.add(signature);
+  }
+  assert.equal(BACKDROPS.find((b) => b.id === "studio")?.mirror, true);
+  assert.equal(BACKDROPS.find((b) => b.id === "midnight")?.mirror, true);
+  assert.equal(BACKDROPS.find((b) => b.id === "daylight")?.scenery, "day");
+  for (const id of ["forest", "night-city", "desert", "mars", "daylight"] as const) {
+    const backdrop = BACKDROPS.find((b) => b.id === id)!;
+    assert.notEqual(backdrop.scenery, "none", `${id} is an empty stage`);
+    assert.notEqual(backdrop.skyTop.toLowerCase(), backdrop.floor.toLowerCase(), `${id} sky matches the ground`);
+    assert.notEqual(backdrop.skyBottom.toLowerCase(), backdrop.floor.toLowerCase(), `${id} horizon matches the ground`);
+    assert.equal(backdrop.mirror, false, `${id} must reflect the outdoor place, not the studio cyclorama`);
+    const layers = horizonFor(backdrop.scenery);
+    assert.ok(layers.length >= 2, `${id} horizon`);
+    const horizon = makeHorizon(layers, backdrop.skyBottom);
+    assert.equal(horizon.children.length, layers.length, `${id} horizon meshes`);
+    disposeHorizon(horizon);
+    assert.ok(groundChroma(id) > 18, `${id} ground is a flat colour`);
+    const stops = skyStops(backdrop);
+    assert.ok(new Set(stops.map((stop) => stop.color.toLowerCase())).size >= 3, `${id} sky is flat`);
+    const sky = new Uint8ClampedArray(16 * 32 * 4);
+    paintSky(backdrop, sky, 16, 32);
+    const top = sky[0] + sky[1] + sky[2];
+    const bottomIndex = (31 * 16) * 4;
+    const bottom = sky[bottomIndex] + sky[bottomIndex + 1] + sky[bottomIndex + 2];
+    assert.notEqual(top, bottom, `${id} sky has no depth`);
+  }
+  console.log("PASS: each backdrop has its own key, fill and rim, and outdoor places keep sky, ground and scenery");
+}
 assert.deepEqual(shotFor("model-3-heritage", "suspension"), SHOTS.suspension, "shotFor must fall back to SHOTS");
 const model3Performance = shotDistance(frameShot("model-3", "performance", 1440));
 assert.ok(
@@ -161,6 +232,40 @@ function checkGeometry(g: THREE.BufferGeometry) {
   assert.ok(index);
   assert.equal(index.count % 3, 0);
   for (const value of index.array) assert.ok(value >= 0 && value < p.count);
+}
+function worldSize(root: THREE.Object3D) {
+  root.updateWorldMatrix(true, true);
+  return new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3());
+}
+function materialNames(root: THREE.Object3D) {
+  const names = new Set<string>();
+  root.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats) names.add(m.name);
+  });
+  return names;
+}
+function assertOneOf(label: string, names: Set<string>, options: string[]) {
+  assert.ok(options.some((name) => names.has(name)), `${label} missing ${options.join(" or ")}; has ${[...names].sort().join(", ")}`);
+}
+function assertSeparated(label: string, names: Set<string>, paint: string[], glass: string[], wheel: string[], lamp: string[]) {
+  assertOneOf(`${label} paint`, names, paint);
+  assertOneOf(`${label} glass`, names, glass);
+  assertOneOf(`${label} wheels`, names, wheel);
+  assertOneOf(`${label} lamps`, names, lamp);
+}
+function assertLength(id: ModelId, meters: number) {
+  const band = lengthBand(id);
+  assert.ok(meters >= band.min && meters <= band.max, `${id} length ${meters.toFixed(3)} m is outside ${band.min.toFixed(3)}–${band.max.toFixed(3)}`);
+}
+function assertUpholstery(label: string, materials: THREE.Material[]) {
+  assert.ok(materials.length > 0, `${label} has no upholstery`);
+  const mat = materials[0] as THREE.MeshPhysicalMaterial;
+  applyInteriorFinish(mat, INTERIORS.white);
+  assert.equal("#" + mat.color.getHexString(), INTERIORS.white.leather.toLowerCase(), `${label} white upholstery`);
+  applyInteriorFinish(mat, INTERIORS.black);
+  assert.equal("#" + mat.color.getHexString(), INTERIORS.black.leather.toLowerCase(), `${label} black upholstery`);
 }
 // Load the actual glTF buffers through Three.js. Textures are stubbed only for this headless geometry check.
 (globalThis as any).self = globalThis;
@@ -245,6 +350,40 @@ for (const model of ["model-3-heritage", "model-s-heritage"]) {
   }
   assert.ok(triangles > 10000, `${model} missing mesh detail`);
   assert.ok(box.getSize(new THREE.Vector3()).length() < 12, "Normalization failed");
+  const root = new THREE.Group();
+  for (const id of Object.keys(prepared.panels)) {
+    const holder = new THREE.Group();
+    const pivot = heritagePivot(model, id as "fixed");
+    holder.position.set(pivot[0], pivot[1], pivot[2]);
+    holder.add(prepared.panels[id as "fixed"]);
+    root.add(holder);
+  }
+  assertLength(model as ModelId, worldSize(root).z);
+  const names = materialNames(root);
+  if (model === "model-3-heritage") {
+    assertSeparated(model, names, ["CAR_PAINT"], ["Glass", "Material.017"], ["Material.011"], ["LED_PHARE"]);
+  } else {
+    assertSeparated(model, names, ["material_9"], ["glass", "Material.002"], ["Rims"], ["emit"]);
+  }
+  const leather = [...prepared.materials.entries()]
+    .filter(([name, mat]) => mat.name === "interior_leather" || name === "Material.015" || (model === "model-s-heritage" && name === "material"))
+    .map(([, mat]) => mat);
+  assertUpholstery(model, leather);
+  const screen = prepared.panels.fixed.getObjectByName("heritage_screen") as THREE.Mesh;
+  assert.equal((screen.material as THREE.Material).name, "display");
+  assert.equal(screen.material.userData.screen, "portrait", `${model} centre screen`);
+  assert.ok(prepared.panels.fixed.getObjectByName("heritage_l_cushion"), `${model} seats`);
+  assert.ok(prepared.panels.fixed.getObjectByName("heritage_dash"), `${model} dash`);
+  assert.ok(prepared.panels.fixed.getObjectByName("heritage_trim"), `${model} trim`);
+  if (model === "model-s-heritage") {
+    const cluster = prepared.panels.fixed.getObjectByName("heritage_cluster") as THREE.Mesh;
+    assert.equal(cluster.material.userData.screen, "cluster");
+  }
+  const bodyKey = model === "model-3-heritage" ? "CAR_PAINT" : "material_9";
+  applyExteriorPaint(prepared.materials.get(bodyKey)!, PAINT["pearl-white"]);
+  assert.equal(prepared.materials.get(bodyKey)!.color.getHexString(), PAINT["pearl-white"].hex.slice(1));
+  applyExteriorPaint(prepared.materials.get(bodyKey)!, PAINT["ultra-red"]);
+  assert.equal(prepared.materials.get(bodyKey)!.color.getHexString(), PAINT["ultra-red"].hex.slice(1));
   prepared.materials.forEach(m => m.dispose());
   console.log(`PASS: ${model}, ${triangles.toLocaleString()} triangles, textures present, 7 articulated groups with straight shut lines`);
 }
@@ -309,6 +448,23 @@ for (const [model, entry] of Object.entries(authoredManifest.vehicles) as [strin
   const wheelA = instance.scene.getObjectByName('wheel_fl')!,
     wheelB = instance.scene.getObjectByName('wheel_rl')!;
   assert.ok(Math.abs(wheelB.position.z - wheelA.position.z - entry.wheelbase) < .0001);
+  if (model === "cybercab") {
+    const { addCabinKit } = await import("../src/studio/vehicles/cabin");
+    addCabinKit(instance.scene, instance.materials as Map<string, THREE.MeshPhysicalMaterial>, "cybercab");
+    assertLength("cybercab", worldSize(instance.scene).z);
+    const names = materialNames(instance.scene);
+    assertSeparated("Cybercab", names, ["exterior_paint"], ["glass"], ["tire_rubber", "wheel_finish"], ["headlight_led", "lamp_lens", "taillight_led"]);
+    assert.ok(instance.scene.getObjectByName("seat") && instance.scene.getObjectByName("seat_1"), "Cybercab is a two-seat cabin");
+    assert.ok(names.has("dashboard") && names.has("display") && names.has("interior_leather"), "Cybercab cabin surfaces");
+    assert.ok(instance.scene.getObjectByName("cybercab_dash_trim"), "Cybercab dash trim");
+    const shell = [...instance.materials.values()].find((m) => m.name === "exterior_paint") as THREE.MeshPhysicalMaterial;
+    applyExteriorPaint(shell, PAINT["cab-gold"]);
+    assert.equal(shell.color.getHexString(), PAINT["cab-gold"].hex.slice(1));
+    applyExteriorPaint(shell, PAINT["cab-white"]);
+    assert.notEqual(shell.color.getHexString(), PAINT["cab-gold"].hex.slice(1));
+    assert.equal(shell.color.getHexString(), PAINT["cab-white"].hex.slice(1));
+    assertUpholstery("Cybercab", [...instance.materials.values()].filter((m) => m.name === "interior_leather"));
+  }
   instance.materials.forEach(m => m.dispose());
   console.log(`PASS: ${model}, compressed decode, ${triangles.toLocaleString()} triangles, ${meshes} meshes, named hinges and opening directions`);
 }
@@ -372,6 +528,23 @@ for (const wheel of ['wheel_fl', 'wheel_fr', 'wheel_rl', 'wheel_rr']) {
   });
 }
 assert.ok(highland.materials.get('Georimblurlfsub01Mtl|exterior_paint'), 'Main Highland shell is exterior paint');
+assertLength("model-3", size.z);
+{
+  const names = materialNames(highland.scene);
+  assertSeparated("Highland", names, ["exterior_paint"], ["glass"], ["wheel_finish", "tire_rubber"], ["headlight_led", "lamp_lens", "taillight_led"]);
+  assert.ok(names.has("interior_leather"), "Highland seats");
+  const screen = highland.scene.getObjectByName("highland_screen") as THREE.Mesh;
+  assert.equal((screen.material as THREE.Material).name, "display");
+  assert.equal(screen.material.userData.screen, "landscape");
+  assert.ok(highland.scene.getObjectByName("highland_dash_brow"));
+  assert.ok(highland.scene.getObjectByName("highland_dash_trim"));
+  const shell = highland.materials.get("Georimblurlfsub01Mtl|exterior_paint")!;
+  applyExteriorPaint(shell, PAINT["pearl-white"]);
+  assert.equal(shell.color.getHexString(), PAINT["pearl-white"].hex.slice(1));
+  applyExteriorPaint(shell, PAINT["marine-blue"]);
+  assert.equal(shell.color.getHexString(), PAINT["marine-blue"].hex.slice(1));
+  assertUpholstery("Highland", [...highland.materials.values()].filter((m) => m.name === "interior_leather"));
+}
 highland.materials.forEach(m => m.dispose());
 highland.scene.traverse(o => { if (o instanceof THREE.Mesh) o.geometry.dispose(); });
 console.log(`PASS: Highland artist asset, ${originalTriangles.toLocaleString()} preserved triangles, textures, scale and closed painted body`);
@@ -453,6 +626,38 @@ for (const spec of [
       assert.ok(prepared.scene.getObjectByName(name), `${spec.id} missing ${name}`);
     }
   }
+  if (spec.id === "juniper") {
+    assertLength("model-y", size.z);
+    const names = materialNames(prepared.scene);
+    assertSeparated("Juniper", names, ["exterior_paint"], ["glass"], ["tire_rubber", "wheel_finish"], ["taillight_led", "lamp_housing", "headlight_led"]);
+    const screen = prepared.scene.getObjectByName("juniper_cabin_screen") as THREE.Mesh;
+    assert.equal(screen.material.userData.screen, "landscape");
+    assert.ok(prepared.scene.getObjectByName("juniper_cabin_l_cushion"), "Juniper seats");
+    assert.ok(prepared.scene.getObjectByName("juniper_cabin_dash"), "Juniper dash");
+    assert.ok(prepared.scene.getObjectByName("juniper_cabin_trim"), "Juniper trim");
+    const shell = [...prepared.materials.values()].find((m) => m.name === "exterior_paint")!;
+    applyExteriorPaint(shell, PAINT["quicksilver"]);
+    assert.equal(shell.color.getHexString(), PAINT["quicksilver"].hex.slice(1));
+    applyExteriorPaint(shell, PAINT["stealth-grey"]);
+    assert.notEqual(shell.color.getHexString(), PAINT["quicksilver"].hex.slice(1));
+    assertUpholstery("Juniper", [...prepared.materials.values()].filter((m) => m.name === "interior_leather"));
+  }
+  if (spec.id === "cybertruck-import") {
+    assertLength("cybertruck", size.z);
+    const names = materialNames(prepared.scene);
+    assertSeparated("Cybertruck", names, ["exterior_steel"], ["glass"], ["tire_rubber", "wheel_finish"], ["signature_led", "taillight_led"]);
+    const screen = prepared.scene.getObjectByName("cybertruck_cabin_screen") as THREE.Mesh;
+    assert.equal(screen.material.userData.screen, "landscape");
+    assert.ok(prepared.scene.getObjectByName("cybertruck_cabin_l_cushion"), "Cybertruck seats");
+    assert.ok(prepared.scene.getObjectByName("cybertruck_cabin_dash"), "Cybertruck dash");
+    assert.ok(prepared.scene.getObjectByName("cybertruck_cabin_yoke"), "Cybertruck yoke");
+    const shell = [...prepared.materials.values()].find((m) => m.name === "exterior_steel")!;
+    shell.color.set(steelParams(PAINT["satin-blue"]).color);
+    assert.equal(shell.color.getHexString(), PAINT["satin-blue"].hex.slice(1));
+    shell.color.set(steelParams(PAINT.stainless).color);
+    assert.notEqual(shell.color.getHexString(), PAINT.stainless.hex.slice(1).toLowerCase());
+    assertUpholstery("Cybertruck", [...prepared.materials.values()].filter((m) => m.name === "interior_leather"));
+  }
   prepared.materials.forEach(m => m.dispose());
   console.log(`PASS: ${spec.id}, ${triangles.toLocaleString()} triangles, ${size.x.toFixed(2)}x${size.y.toFixed(2)}x${size.z.toFixed(2)} m`);
 }
@@ -470,10 +675,24 @@ assert.match(truckCredits, /does not lift the body/);
 const canvasSource = await fs.readFile("src/studio/scene/VehicleCanvas.tsx", "utf8");
 assert.match(canvasSource, /minOrbitDistance\(/);
 assert.match(canvasSource, /frameShot\(/);
+assert.match(canvasSource, /lightRig\(/);
+assert.match(canvasSource, /fillGroundImage\(/);
 assert.doesNotMatch(canvasSource, /minDistance=\{[^}]*3\.8/);
 const authoredSource = await fs.readFile("src/studio/vehicles/AuthoredVehicle.tsx", "utf8");
 assert.match(authoredSource, /suspensionLift\(/);
 assert.match(authoredSource, /wheelsShareBody\(/);
+assert.match(authoredSource, /applyExteriorPaint\(/);
+assert.match(authoredSource, /applyInteriorFinish\(/);
+assert.match(authoredSource, /steelParams\(/);
+const heritageSource = await fs.readFile("src/studio/vehicles/HeritageVehicle.tsx", "utf8");
+assert.match(heritageSource, /applyExteriorPaint\(/);
+assert.match(heritageSource, /applyInteriorFinish\(/);
+const studioSource = await fs.readFile("src/studio/Studio.tsx", "utf8");
+assert.match(studioSource, />Paint</);
+assert.match(studioSource, />Interior</);
+assert.match(studioSource, /Backdrop/);
+const css = await fs.readFile("src/styles.css", "utf8");
+assert.match(css, /\.sheet-closed \.vehicle-stage \{[^}]*right: 28px/);
 const cabCredits = await fs.readFile("public/models/cybercab-import/CREDITS.md", "utf8");
 assert.match(cabCredits, /zwir3kk/);
 assert.match(cabCredits, /CC BY 4\.0/);

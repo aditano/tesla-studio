@@ -3,7 +3,8 @@ import { useGLTF } from "@react-three/drei";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import type { Interior, Paint, Variant, PartId } from "../catalog";
-import { paintParams } from "../materials";
+import { applyExteriorPaint, applyInteriorFinish, steelParams } from "../materials";
+import { addCabinKit, applyDisplay } from "./cabin";
 import { useStudio } from "../store";
 import { usesImportedPresentation, vehicleGlb } from "./assets";
 import { prepareHighland } from "./highland";
@@ -75,15 +76,21 @@ export function AuthoredVehicle({
     false,
     true,
   );
-  const instance = useMemo(
-    () =>
-      highland
-        ? prepareHighland(source)
-        : imported
-          ? prepareImported(source, model)
-          : cloneAuthored(source),
-    [source, highland, imported, model],
-  );
+  const instance = useMemo(() => {
+    const prepared = highland
+      ? prepareHighland(source)
+      : imported
+        ? prepareImported(source, model)
+        : cloneAuthored(source);
+    if (model === "cybercab") {
+      addCabinKit(
+        prepared.scene,
+        prepared.materials as Map<string, THREE.MeshPhysicalMaterial>,
+        "cybercab",
+      );
+    }
+    return prepared;
+  }, [source, highland, imported, model]);
   const rig = useMemo(
     () =>
       Object.fromEntries(
@@ -116,36 +123,23 @@ export function AuthoredVehicle({
   useLayoutEffect(() => {
     instance.materials.forEach((material) => {
       const m = material as THREE.MeshPhysicalMaterial;
-      if (m.name === "exterior_paint") {
-        const p = paintParams(paint);
-        Object.assign(m, p, {
-          color: new THREE.Color(p.color),
-          sheenColor: new THREE.Color(p.sheenColor),
-        });
-        m.clearcoat = p.clearcoat;
-        m.clearcoatRoughness = p.clearcoatRoughness;
-        m.envMapIntensity = p.envMapIntensity;
-        m.sheen = p.sheen;
-        m.sheenRoughness = p.sheenRoughness;
-        // Anisotropy needs per-vertex tangents. The imported meshes ship
-        // without them, and the derived fallback yields NaNs on flat
-        // exoskeleton panels that bloom then smears across the whole frame.
+      if (m.name === "exterior_paint") applyExteriorPaint(m, paint);
+      if (model === "cybertruck" && m.name === "exterior_steel") {
+        const steel = steelParams(paint);
+        const inside = view === "interior";
+        m.color.set(steel.color);
+        m.roughness = inside ? Math.max(steel.roughness, 0.62) : steel.roughness;
+        m.metalness = inside ? Math.min(steel.metalness, 0.7) : steel.metalness;
+        m.envMapIntensity = inside ? 0.32 : steel.env;
         m.anisotropy = 0;
       }
-      if (model === "cybertruck" && m.name === "exterior_steel") {
-        const inside = view === "interior";
-        m.envMapIntensity = inside ? 0.32 : 1.15;
-        m.roughness = inside ? 0.62 : 0.34;
-        m.metalness = inside ? 0.7 : 0.96;
-      }
       if (m.name === "interior_leather") {
-        m.color.set(interior.leather);
-        m.sheen = model === "cybertruck" ? 0.08 : 0.45;
-        m.sheenRoughness = 0.36;
-        m.sheenColor.set(interior.leather);
-        m.roughness = model === "cybertruck" ? 0.86 : 0.62;
-        m.metalness = 0;
-        m.envMapIntensity = model === "cybertruck" ? 0.08 : 0.28;
+        applyInteriorFinish(m, interior);
+        if (model === "cybertruck") {
+          m.roughness = 0.86;
+          m.sheen = 0.08;
+          m.envMapIntensity = 0.08;
+        }
       }
       if (m.name === "dashboard" || m.name === "carpet" || m.name === "display") {
         const trim = cabinTrim(model, interior);
@@ -164,12 +158,10 @@ export function AuthoredVehicle({
           m.envMapIntensity = 0.12;
         }
         if (m.name === "display") {
-          m.color.set("#10181c");
-          m.emissive.set("#7eb8c4");
-          m.emissiveIntensity = model === "model-3" ? 0.9 : model === "cybertruck" ? 0.6 : 0.45;
-          m.roughness = 0.42;
-          m.metalness = 0.02;
-          m.envMapIntensity = 0.25;
+          const kind = m.userData.screen === "portrait" || m.userData.screen === "cluster"
+            ? m.userData.screen
+            : "landscape";
+          applyDisplay(m, kind);
         }
       }
       if (m.name === "brake_caliper") m.color.set(variant.caliper);
@@ -235,7 +227,12 @@ export function AuthoredVehicle({
       m.needsUpdate = true;
     });
     instance.scene.traverse((o) => {
-      if (o.name.startsWith("highland_") || o.name.startsWith("cybertruck_cabin"))
+      if (
+        o.name.startsWith("highland_") ||
+        o.name.startsWith("cybertruck_cabin") ||
+        o.name.startsWith("juniper_cabin") ||
+        o.name.startsWith("cybercab_")
+      )
         o.visible = view === "interior";
       if (o.name.startsWith("wheel_sport"))
         o.visible = !!variant.spoiler && !model.includes("cab");

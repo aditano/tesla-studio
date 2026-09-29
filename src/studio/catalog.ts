@@ -559,6 +559,21 @@ VEHICLES.unshift(
   },
 );
 
+/** Owner-manual or reveal lengths, metres. The viewer stays inside 5%. */
+export const DOCUMENTED_LENGTHS: Record<ModelId, number> = {
+  "model-3": 4.72,
+  "model-y": 4.79,
+  "model-3-heritage": 4.69,
+  "model-s-heritage": 4.97,
+  cybertruck: 5.68,
+  cybercab: 4.12,
+};
+
+export function lengthBand(id: ModelId) {
+  const length = DOCUMENTED_LENGTHS[id];
+  return { length, min: length * 0.95, max: length * 1.05 };
+}
+
 export function vehicleById(id: ModelId): VehicleDef {
   return VEHICLES.find((v) => v.id === id) ?? VEHICLES[0];
 }
