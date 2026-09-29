@@ -298,18 +298,22 @@ function CabinFill() {
   const inside = feature === "interior";
   const y =
     model === "cybertruck" ? 1.28 : model === "cybercab" ? 0.9 : model === "model-y" ? 1.12 : 1.02;
+  const ceiling: [number, number, number] =
+    model === "cybertruck" ? [0, 1.42, 0.2] : [0, y + 0.22, 0.2];
+  const dash: [number, number, number] =
+    model === "cybertruck" ? [0, 0.96, -0.32] : [0, y - 0.08, -0.55];
   return (
     <>
       <pointLight
-        position={[0, y + 0.22, 0.2]}
-        intensity={inside ? 0.55 : 0.2}
+        position={ceiling}
+        intensity={inside ? (model === "cybertruck" ? 0.4 : 0.55) : 0.2}
         distance={2.4}
         decay={2}
         color="#fff4e8"
       />
       <pointLight
-        position={[0, y - 0.08, -0.55]}
-        intensity={inside ? 0.28 : 0.08}
+        position={dash}
+        intensity={inside ? (model === "cybertruck" ? 0.08 : 0.28) : 0.08}
         distance={1.8}
         decay={2}
         color="#d5e7ef"

@@ -116,7 +116,7 @@ export function AuthoredVehicle({
   useLayoutEffect(() => {
     instance.materials.forEach((material) => {
       const m = material as THREE.MeshPhysicalMaterial;
-      if (m.name === "exterior_paint" || m.name === "exterior_steel") {
+      if (m.name === "exterior_paint") {
         const p = paintParams(paint);
         Object.assign(m, p, {
           color: new THREE.Color(p.color),
@@ -132,14 +132,20 @@ export function AuthoredVehicle({
         // exoskeleton panels that bloom then smears across the whole frame.
         m.anisotropy = 0;
       }
+      if (model === "cybertruck" && m.name === "exterior_steel") {
+        const inside = view === "interior";
+        m.envMapIntensity = inside ? 0.32 : 1.15;
+        m.roughness = inside ? 0.62 : 0.34;
+        m.metalness = inside ? 0.7 : 0.96;
+      }
       if (m.name === "interior_leather") {
         m.color.set(interior.leather);
-        m.sheen = 0.45;
+        m.sheen = model === "cybertruck" ? 0.08 : 0.45;
         m.sheenRoughness = 0.36;
         m.sheenColor.set(interior.leather);
-        m.roughness = 0.52;
+        m.roughness = model === "cybertruck" ? 0.86 : 0.62;
         m.metalness = 0;
-        m.envMapIntensity = 0.7;
+        m.envMapIntensity = model === "cybertruck" ? 0.08 : 0.28;
       }
       if (m.name === "dashboard" || m.name === "carpet" || m.name === "display") {
         const trim = cabinTrim(model, interior);
@@ -160,7 +166,7 @@ export function AuthoredVehicle({
         if (m.name === "display") {
           m.color.set("#10181c");
           m.emissive.set("#7eb8c4");
-          m.emissiveIntensity = model === "model-3" ? 0.85 : 0.45;
+          m.emissiveIntensity = model === "model-3" ? 0.9 : model === "cybertruck" ? 0.6 : 0.45;
           m.roughness = 0.42;
           m.metalness = 0.02;
           m.envMapIntensity = 0.25;
@@ -202,6 +208,21 @@ export function AuthoredVehicle({
         m.clearcoatRoughness = 0.05;
         m.depthWrite = false;
         m.envMapIntensity = 1.35;
+        if (model === "cybertruck" && m.name === "glass") {
+          if (view === "interior") {
+            m.side = THREE.DoubleSide;
+            m.opacity = 0.78;
+            m.color.set("#0c1824");
+            m.envMapIntensity = 0.16;
+            m.roughness = 0.24;
+            m.metalness = 0;
+            m.clearcoat = 0.15;
+            m.depthWrite = true;
+          } else {
+            m.side = THREE.FrontSide;
+            m.color.set("#6a8898");
+          }
+        }
         if (m.name === "lamp_lens") {
           m.emissive.set("#000000");
           m.emissiveIntensity = 0;
@@ -214,7 +235,8 @@ export function AuthoredVehicle({
       m.needsUpdate = true;
     });
     instance.scene.traverse((o) => {
-      if (o.name.startsWith("highland_")) o.visible = view === "interior";
+      if (o.name.startsWith("highland_") || o.name.startsWith("cybertruck_cabin"))
+        o.visible = view === "interior";
       if (o.name.startsWith("wheel_sport"))
         o.visible = !!variant.spoiler && !model.includes("cab");
       if (o.name.startsWith("wheel_standard"))

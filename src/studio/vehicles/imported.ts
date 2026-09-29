@@ -27,7 +27,7 @@ function brushedSteel() {
   const h = 64;
   const data = new Uint8Array(w * h * 4);
   for (let y = 0; y < h; y++) {
-    const band = 168 + (y % 4) * 18;
+    const band = 214 + (y % 3) * 6;
     for (let x = 0; x < w; x++) {
       const i = (y * w + x) * 4;
       const grain = ((x * 17 + y * 3) % 11) - 5;
@@ -40,7 +40,7 @@ function brushedSteel() {
   }
   const texture = new THREE.DataTexture(data, w, h);
   texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(8, 4);
+  texture.repeat.set(28, 10);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.needsUpdate = true;
   brushed = texture;
@@ -427,6 +427,22 @@ function shellMaterial(
     material.metalness = 0.08;
   }
   if (role === "signature_led" || role === "headlight_led") material.color.set("#e7eef8");
+  if (role === "dashboard") {
+    material.map = null;
+    material.color.set("#1c1e22");
+    material.metalness = 0.04;
+    material.roughness = 0.74;
+    material.envMapIntensity = 0.18;
+    material.clearcoat = 0;
+  }
+  if (role === "carpet") {
+    material.map = null;
+    material.color.set("#121418");
+    material.metalness = 0;
+    material.roughness = 0.95;
+    material.envMapIntensity = 0.06;
+    material.clearcoat = 0;
+  }
   materials.set(key, material);
   return material;
 }
@@ -509,6 +525,15 @@ function segmentCybertruckShell(
     if (y > 1.12 && y < 1.2 && z < -2.55 && Math.abs(x) < 0.78 && nz < -0.35) return "signature_led";
     if (y > 1.15 && y < 1.28 && z > 2.55 && Math.abs(x) < 0.85 && nz > 0.45) return "taillight_led";
     if (y < 0.36 && y > 0.08 && Math.abs(x) > 0.55 && Math.abs(nx) > 0.4) return "satin_trim";
+    // Faces that point into the cab. The shell has no separate interior, so
+    // these would otherwise read as brushed stainless from the cabin camera.
+    if (Math.abs(x) < 0.84 && y > 0.42 && y < 1.58 && z > -1.3 && z < 1.0) {
+      if (nz > 0.4 && y > 0.7 && y < 1.38 && z < -0.05) return "dashboard";
+      if (ny > 0.5 && y < 0.92 && z > -0.95) return "carpet";
+      if (ny < -0.5 && y > 1.32) return "dashboard";
+      if (Math.abs(x) > 0.42 && Math.abs(nx) > 0.45 && x * nx < 0 && y > 0.55 && y < 1.48)
+        return "dashboard";
+    }
     return "exterior_steel";
   };
   for (let i = 0; i < position.count; i += 3) {
@@ -567,46 +592,62 @@ function addCybertruckCabin(
     materials.set(key, material);
     return material;
   };
-  const leather = make("interior_leather", "#1a1c1f", 0.55);
-  const dashMat = make("dashboard", "#1c1e22", 0.62, 0.04);
+  const leather = make("interior_leather", "#1a1c1f", 0.72);
+  const dashMat = make("dashboard", "#1c1e22", 0.72, 0.04);
   const carpet = make("carpet", "#121418", 0.95);
-  const screen = make("display", "#10181c", 0.22, 0.08);
+  const screen = make("display", "#10181c", 0.35, 0.02);
   screen.emissive.set("#7eb8c4");
-  screen.emissiveIntensity = 0.55;
-  const trim = make("satin_trim", "#14171c", 0.5, 0.2);
-  const add = (mesh: THREE.Mesh) => {
+  screen.emissiveIntensity = 0.9;
+  const trim = make("satin_trim", "#14171c", 0.55, 0.12);
+  const add = (mesh: THREE.Mesh, name: string) => {
+    mesh.name = name;
     mesh.userData.cabin = true;
     mesh.userData.noPanel = true;
     mesh.userData.presentationDetail = true;
     mesh.castShadow = mesh.receiveShadow = true;
     body.add(mesh);
   };
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.45, 0.04, 1.7), carpet);
-  floor.position.set(0, 0.58, -0.35);
-  add(floor);
-  for (const x of [-0.42, 0.42]) {
-    const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.12, 0.5), leather);
-    cushion.position.set(x, 0.78, -0.15);
-    const back = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.55, 0.1), leather);
-    back.position.set(x, 1.12, 0.12);
-    back.rotation.x = -0.18;
-    add(cushion);
-    add(back);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.03, 1.7), carpet);
+  floor.position.set(0, 0.52, -0.05);
+  add(floor, "cybertruck_cabin_floor");
+  const liner = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.03, 1.35), dashMat);
+  liner.position.set(0, 1.56, -0.05);
+  add(liner, "cybertruck_cabin_headliner");
+  for (const x of [-0.32, 0.32]) {
+    const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.36), leather);
+    cushion.position.set(x, 0.74, -0.22);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.38, 0.07), leather);
+    back.position.set(x, 1.0, -0.28);
+    back.rotation.x = 0.08;
+    add(cushion, x < 0 ? "cybertruck_cabin_cushion_l" : "cybertruck_cabin_cushion_r");
+    add(back, x < 0 ? "cybertruck_cabin_back_l" : "cybertruck_cabin_back_r");
   }
-  const dash = new THREE.Mesh(new THREE.BoxGeometry(1.35, 0.16, 0.36), dashMat);
-  dash.position.set(0, 1.05, -1.05);
-  add(dash);
-  const display = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.2, 0.02), screen);
-  display.position.set(0, 1.12, -0.86);
-  display.rotation.x = -0.2;
-  add(display);
+  const console = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.42), dashMat);
+  console.position.set(0, 0.7, -0.12);
+  add(console, "cybertruck_cabin_console");
+  const dash = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.46, 0.05), dashMat);
+  dash.position.set(0, 0.98, -0.42);
+  add(dash, "cybertruck_cabin_dash");
+  const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.2, 0.012), dashMat);
+  bezel.position.set(0.12, 1.04, -0.4);
+  bezel.rotation.x = -0.12;
+  add(bezel, "cybertruck_cabin_bezel");
+  const display = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.14, 0.012), screen);
+  display.position.set(0.12, 1.04, -0.388);
+  display.rotation.x = -0.12;
+  add(display, "cybertruck_cabin_screen");
   const yoke = new THREE.Group();
-  yoke.position.set(-0.38, 1.08, -0.72);
-  yoke.rotation.x = 0.35;
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.045, 0.04), trim);
-  const stem = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.14, 0.04), trim);
-  stem.position.y = -0.08;
-  yoke.add(bar, stem);
+  yoke.name = "cybertruck_cabin_yoke";
+  yoke.position.set(-0.2, 0.97, -0.32);
+  yoke.rotation.x = 0.18;
+  const top = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.035, 0.024), trim);
+  const bottom = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.024), trim);
+  bottom.position.y = -0.12;
+  const left = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.13, 0.024), trim);
+  left.position.set(-0.11, -0.06, 0);
+  const right = new THREE.Mesh(new THREE.BoxGeometry(0.028, 0.13, 0.024), trim);
+  right.position.set(0.11, -0.06, 0);
+  yoke.add(top, bottom, left, right);
   yoke.userData.cabin = true;
   yoke.userData.noPanel = true;
   yoke.userData.presentationDetail = true;

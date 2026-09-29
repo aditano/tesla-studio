@@ -446,9 +446,9 @@ export const VEHICLES: VehicleDef[] = [
       },
     ],
     exteriors: [
+      PAINT["cab-gold"],
       PAINT["cab-white"],
       PAINT["stealth-grey"],
-      PAINT["cab-gold"],
       PAINT["diamond-black"],
       PAINT.quicksilver,
     ],
