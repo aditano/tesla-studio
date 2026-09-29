@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree, advance } from "@react-three/fiber";
 import {
   ContactShadows,
   Environment,
@@ -37,6 +37,7 @@ function CinematicControls() {
   const revision = useStudio((s) => s.cameraRevision);
   const model = useStudio((s) => s.modelId);
   const autoRotate = useStudio((s) => s.autoRotate);
+  const steered = useRef(false);
   const flight = useRef<{
     start: THREE.Vector3;
     from: THREE.Vector3;
@@ -46,15 +47,16 @@ function CinematicControls() {
     duration: number;
   } | null>(null);
   useEffect(() => {
+    steered.current = false;
     const cam = camera as THREE.PerspectiveCamera;
-    cam.fov = narrow ? 42 : 32;
+    cam.fov = feature === "interior" ? 50 : narrow ? 42 : 32;
     cam.updateProjectionMatrix();
     const framed = frameShot(model, feature ?? "overview", narrow ? 390 : 1024);
     const target = new THREE.Vector3(...framed.target);
     const end = new THREE.Vector3(...framed.position);
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const reduced =
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      (window as unknown as { __teslaSnap?: boolean }).__teslaSnap === true;
     flight.current = {
       start: camera.position.clone(),
       from: controls.current?.target.clone() ?? new THREE.Vector3(0, 0.75, 0),
@@ -78,26 +80,48 @@ function CinematicControls() {
       controls.current?.target.set(t[0], t[1], t[2]);
       controls.current?.update();
     };
+    let clock = 0;
+    (w as { __teslaStep?: (frames?: number) => void }).__teslaStep = (frames = 1) => {
+      for (let i = 0; i < frames; i++) {
+        clock += 50;
+        advance(clock, true);
+      }
+    };
     return () => {
       delete w.__teslaCam;
       delete w.__teslaScene;
+      delete (w as { __teslaStep?: unknown }).__teslaStep;
     };
   }, [camera, scene]);
   useFrame((_, delta) => {
+    const snap = (window as unknown as { __teslaSnap?: boolean }).__teslaSnap === true;
+    if (feature === "interior") {
+      flight.current = null;
+      return;
+    }
     const f = flight.current,
       c = controls.current;
     if (!f || !c) return;
-    f.elapsed += Math.min(delta, 0.05);
-    const t = f.duration === 0 ? 1 : Math.min(1, f.elapsed / f.duration);
+    f.elapsed += snap ? f.duration || 1 : Math.min(delta, 0.05);
+    const t = f.duration === 0 || snap ? 1 : Math.min(1, f.elapsed / f.duration);
     const e = t * t * t * (t * (t * 6 - 15) + 10);
     camera.position.lerpVectors(f.start, f.end, e);
-    if (feature !== "interior") {
-      camera.position.y = Math.max(camera.position.y, 0.45);
-    }
+    camera.position.y = Math.max(camera.position.y, 0.45);
     c.target.lerpVectors(f.from, f.target, e);
     c.update();
     if (t === 1) flight.current = null;
   });
+  // OrbitControls clamps a seated viewpoint back out of the cabin. Re-apply
+  // the interior pose after that update until the user actually drags.
+  useFrame(() => {
+    if (feature !== "interior" || steered.current) return;
+    const framed = frameShot(model, "interior", narrow ? 390 : 1024);
+    camera.position.set(framed.position[0], framed.position[1], framed.position[2]);
+    const look = controls.current?.target;
+    if (look) look.set(framed.target[0], framed.target[1], framed.target[2]);
+    camera.lookAt(framed.target[0], framed.target[1], framed.target[2]);
+  }, 0.5);
+  const inside = feature === "interior";
   return (
     <OrbitControls
       ref={controls}
@@ -109,9 +133,10 @@ function CinematicControls() {
       autoRotateSpeed={0.45}
       minDistance={minOrbitDistance(model, feature, narrow ? 390 : 1024)}
       maxDistance={18}
-      minPolarAngle={0.12}
-      maxPolarAngle={Math.PI / 2 - 0.04}
+      minPolarAngle={inside ? 0.04 : 0.12}
+      maxPolarAngle={inside ? 2.6 : Math.PI / 2 - 0.04}
       onStart={() => {
+        steered.current = true;
         flight.current = null;
         useStudio.getState().setAutoRotate(false);
         window.dispatchEvent(new Event("studio-manual-orbit"));
@@ -267,6 +292,35 @@ function OutdoorEnvironment({ backdrop }: { backdrop: Backdrop }) {
   );
 }
 
+function CabinFill() {
+  const feature = useStudio((s) => s.feature);
+  const model = useStudio((s) => s.modelId);
+  const inside = feature === "interior";
+  const y =
+    model === "cybertruck" ? 1.28 : model === "cybercab" ? 0.9 : model === "model-y" ? 1.12 : 1.02;
+  const ceiling: [number, number, number] =
+    model === "cybertruck" ? [0, 1.42, 0.2] : [0, y + 0.22, 0.2];
+  const dash: [number, number, number] =
+    model === "cybertruck" ? [0, 0.96, -0.32] : [0, y - 0.08, -0.55];
+  return (
+    <>
+      <pointLight
+        position={ceiling}
+        intensity={inside ? (model === "cybertruck" ? 0.4 : 0.55) : 0.2}
+        distance={2.4}
+        decay={2}
+        color="#fff4e8"
+      />
+      <pointLight
+        position={dash}
+        intensity={inside ? (model === "cybertruck" ? 0.08 : 0.28) : 0.08}
+        distance={1.8}
+        decay={2}
+        color="#d5e7ef"
+      />
+    </>
+  );
+}
 function Lighting({ high }: { high: boolean }) {
   const backdrop = useBackdrop();
   return (
@@ -278,6 +332,7 @@ function Lighting({ high }: { high: boolean }) {
         color={backdrop.hemiSky}
         groundColor={backdrop.hemiGround}
       />
+      <CabinFill />
       <directionalLight
         position={backdrop.keyPosition}
         intensity={backdrop.keyIntensity}
@@ -524,6 +579,7 @@ function ContextGuard() {
 }
 function PostFX({ high }: { high: boolean }) {
   const backdrop = useBackdrop();
+  const interior = useStudio((s) => s.feature) === "interior";
   if (!high) return null;
   return (
     // The composer renders offscreen, which discards the canvas MSAA. Without
@@ -531,9 +587,9 @@ function PostFX({ high }: { high: boolean }) {
     <EffectComposer multisampling={4} enableNormalPass={false}>
       <N8AO aoRadius={0.24} intensity={backdrop.ao} halfRes />
       <Bloom
-        luminanceThreshold={backdrop.bloomThreshold}
+        luminanceThreshold={interior ? 0.98 : backdrop.bloomThreshold}
         luminanceSmoothing={0.22}
-        intensity={backdrop.bloomIntensity}
+        intensity={interior ? backdrop.bloomIntensity * 0.12 : backdrop.bloomIntensity}
         mipmapBlur
       />
       <Vignette
@@ -556,6 +612,7 @@ export function VehicleCanvas() {
   const high = prefersHighQuality(quality, narrow ? 767 : 1024);
   return (
     <Canvas
+      frameloop="always"
       shadows="percentage"
       dpr={[1, high ? 1.75 : 1.25]}
       camera={{ position: [4.35, 1.58, -5.45], fov: 32, near: 0.035, far: 400 }}

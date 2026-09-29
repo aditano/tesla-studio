@@ -11,6 +11,18 @@ import { prepareImported } from "./imported";
 import { LampBeams } from "./LampBeams";
 import { suspensionLift, wheelsShareBody } from "./suspension";
 
+function cabinTrim(model: string, interior: Interior) {
+  if (model === "model-3") {
+    if (interior.id === "white") return { dash: "#d4cfc6", carpet: "#3a3d42" };
+    if (interior.id === "zen-grey") return { dash: "#8d9196", carpet: "#45484d" };
+    return { dash: "#1c1e22", carpet: "#16181c" };
+  }
+  return {
+    dash: interior.dash,
+    carpet: interior.id === "white" || interior.id === "cream" ? "#4a463f" : "#14161a",
+  };
+}
+
 const partNames: Record<string, PartId> = {
   door_fl: "door-fl",
   door_fr: "door-fr",
@@ -83,6 +95,7 @@ export function AuthoredVehicle({
     [instance],
   );
   const feature = useStudio((s) => s.demoFeature);
+  const view = useStudio((s) => s.feature);
   const open = useStudio((s) => s.open);
   const lights = useStudio((s) => s.lightsOn);
   const lightBar = useStudio((s) => s.lightBarOn);
@@ -103,7 +116,7 @@ export function AuthoredVehicle({
   useLayoutEffect(() => {
     instance.materials.forEach((material) => {
       const m = material as THREE.MeshPhysicalMaterial;
-      if (m.name === "exterior_paint" || m.name === "exterior_steel") {
+      if (m.name === "exterior_paint") {
         const p = paintParams(paint);
         Object.assign(m, p, {
           color: new THREE.Color(p.color),
@@ -119,14 +132,45 @@ export function AuthoredVehicle({
         // exoskeleton panels that bloom then smears across the whole frame.
         m.anisotropy = 0;
       }
+      if (model === "cybertruck" && m.name === "exterior_steel") {
+        const inside = view === "interior";
+        m.envMapIntensity = inside ? 0.32 : 1.15;
+        m.roughness = inside ? 0.62 : 0.34;
+        m.metalness = inside ? 0.7 : 0.96;
+      }
       if (m.name === "interior_leather") {
         m.color.set(interior.leather);
-        m.sheen = 0.45;
+        m.sheen = model === "cybertruck" ? 0.08 : 0.45;
         m.sheenRoughness = 0.36;
         m.sheenColor.set(interior.leather);
-        m.roughness = 0.52;
+        m.roughness = model === "cybertruck" ? 0.86 : 0.62;
         m.metalness = 0;
-        m.envMapIntensity = 0.7;
+        m.envMapIntensity = model === "cybertruck" ? 0.08 : 0.28;
+      }
+      if (m.name === "dashboard" || m.name === "carpet" || m.name === "display") {
+        const trim = cabinTrim(model, interior);
+        if (m.name === "dashboard") {
+          m.color.set(trim.dash);
+          m.map = null;
+          m.roughness = 0.62;
+          m.metalness = 0.04;
+          m.envMapIntensity = 0.35;
+        }
+        if (m.name === "carpet") {
+          m.color.set(trim.carpet);
+          m.map = null;
+          m.roughness = 0.94;
+          m.metalness = 0;
+          m.envMapIntensity = 0.12;
+        }
+        if (m.name === "display") {
+          m.color.set("#10181c");
+          m.emissive.set("#7eb8c4");
+          m.emissiveIntensity = model === "model-3" ? 0.9 : model === "cybertruck" ? 0.6 : 0.45;
+          m.roughness = 0.42;
+          m.metalness = 0.02;
+          m.envMapIntensity = 0.25;
+        }
       }
       if (m.name === "brake_caliper") m.color.set(variant.caliper);
       if (m.name === "wheel_finish")
@@ -164,6 +208,21 @@ export function AuthoredVehicle({
         m.clearcoatRoughness = 0.05;
         m.depthWrite = false;
         m.envMapIntensity = 1.35;
+        if (model === "cybertruck" && m.name === "glass") {
+          if (view === "interior") {
+            m.side = THREE.DoubleSide;
+            m.opacity = 0.78;
+            m.color.set("#0c1824");
+            m.envMapIntensity = 0.16;
+            m.roughness = 0.24;
+            m.metalness = 0;
+            m.clearcoat = 0.15;
+            m.depthWrite = true;
+          } else {
+            m.side = THREE.FrontSide;
+            m.color.set("#6a8898");
+          }
+        }
         if (m.name === "lamp_lens") {
           m.emissive.set("#000000");
           m.emissiveIntensity = 0;
@@ -176,6 +235,8 @@ export function AuthoredVehicle({
       m.needsUpdate = true;
     });
     instance.scene.traverse((o) => {
+      if (o.name.startsWith("highland_") || o.name.startsWith("cybertruck_cabin"))
+        o.visible = view === "interior";
       if (o.name.startsWith("wheel_sport"))
         o.visible = !!variant.spoiler && !model.includes("cab");
       if (o.name.startsWith("wheel_standard"))
@@ -194,7 +255,7 @@ export function AuthoredVehicle({
         o.position.y = variant.wheelRadius;
       }
     });
-  }, [instance, paint, interior, variant, lights, lightBar, highland, model]);
+  }, [instance, paint, interior, variant, lights, lightBar, highland, model, view]);
   useEffect(
     () => () => {
       instance.materials.forEach((m) => m.dispose());
@@ -209,7 +270,9 @@ export function AuthoredVehicle({
     const dt = Math.min(delta, 0.05);
     elapsed.current += dt;
     const damp = (a: number, b: number) =>
-      reduced ? b : THREE.MathUtils.damp(a, b, 5, dt);
+      reduced || (window as unknown as { __teslaSnap?: boolean }).__teslaSnap
+        ? b
+        : THREE.MathUtils.damp(a, b, 5, dt);
     if (!staticBody) {
       for (const name of ["door_fl", "door_fr", "door_rl", "door_rr"]) {
         const door = rig[name];
@@ -238,6 +301,7 @@ export function AuthoredVehicle({
           const mats = Array.isArray(child.material)
             ? child.material
             : [child.material];
+          if (model !== "cybercab") return;
           if (!mats.some((m) => /glass|window/i.test(m.name))) return;
           if (child.userData.presentationDetail) return;
           child.position.y = damp(child.position.y, active ? -0.2 : 0);
@@ -274,12 +338,20 @@ export function AuthoredVehicle({
           open.charge || feature === "charge" ? -1.25 : 0,
         );
       if (rig.tonneau) {
-        const target =
-          open.tonneau || open.trunk || feature === "tonneau" || feature === "trunk"
-            ? 0.035
-            : 1;
-        const scale = damp(rig.tonneau.scale.z, target);
-        rig.tonneau.scale.set(1, scale, scale);
+        const active =
+          open.tonneau || open.trunk || feature === "tonneau" || feature === "trunk";
+        const slide = rig.tonneau.userData.slide as number | undefined;
+        if (slide) {
+          const closed =
+            (rig.tonneau.userData.closedZ as number | undefined) ?? rig.tonneau.position.z;
+          rig.tonneau.userData.closedZ = closed;
+          rig.tonneau.position.z = damp(rig.tonneau.position.z, active ? closed - slide : closed);
+          rig.tonneau.scale.set(1, 1, 1);
+        } else {
+          const target = active ? 0.035 : 1;
+          const scale = damp(rig.tonneau.scale.z, target);
+          rig.tonneau.scale.set(1, scale, scale);
+        }
       }
     }
     if (rig.body) {

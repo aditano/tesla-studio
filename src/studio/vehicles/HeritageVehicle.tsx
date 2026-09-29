@@ -74,12 +74,14 @@ function sideDoors(
 }
 
 const HOOD: PanelRig = {
-  pivot: [0, 0.9, -0.95],
-  clip: [above(0, -0.76), below(0, 0.76), above(1, 0.76), above(2, -2.13), below(2, -0.97)],
+  // Hinge at the cowl, just ahead of the windshield base.
+  pivot: [0, 0.98, -1.05],
+  clip: [above(0, -0.76), below(0, 0.76), above(1, 0.76), above(2, -2.13), below(2, -1.08)],
 };
 const HATCH: PanelRig = {
-  pivot: [0, 1, 1.25],
-  clip: [above(0, -0.79), below(0, 0.79), above(1, 0.79), above(2, 1.27)],
+  // Hinge along the roof joint, above the rear glass.
+  pivot: [0, 1.32, 1.18],
+  clip: [above(0, -0.79), below(0, 0.79), above(1, 0.85), above(2, 1.22)],
 };
 
 /** Stations measured on each source mesh: door stations from the paint-mesh
@@ -244,6 +246,11 @@ export function prepareHeritage(source: THREE.Group, model: string) {
     const posOffset = sizes
       .slice(0, names.indexOf("position"))
       .reduce((a, b) => a + b, 0);
+    const normalIndex = names.indexOf("normal");
+    const normalOffset =
+      normalIndex < 0
+        ? -1
+        : sizes.slice(0, normalIndex).reduce((a, b) => a + b, 0);
     const index = geometry.getIndex();
     const count = index?.count ?? attrs[0].count;
     const read = (i: number): Vertex => {
@@ -269,9 +276,33 @@ export function prepareHeritage(source: THREE.Group, model: string) {
       x /= poly.length;
       y /= poly.length;
       z /= poly.length;
+      let nx = 0;
+      let ny = 0;
+      let nz = 0;
+      if (normalOffset >= 0) {
+        for (const v of poly) {
+          nx += v[normalOffset];
+          ny += v[normalOffset + 1];
+          nz += v[normalOffset + 2];
+        }
+        nx /= poly.length;
+        ny /= poly.length;
+        nz /= poly.length;
+      }
+      const glassName = /glass|window|Material\.017|Material\.002/i.test(material.name);
+      const facesPanel = (panel: Exclude<Panel, "fixed">) => {
+        if (normalOffset < 0) return true;
+        if (panel === "hood") return !glassName && ny > 0.35 && y > 0.8;
+        if (panel === "hatch") return !glassName && (ny > 0.22 || (nz > 0.3 && y > 0.72));
+        if (glassName) return Math.abs(nx) > 0.32 && ny < 0.55;
+        // Roof skin stays put. Door shells, frames and handles swing together.
+        if (ny > 0.55 && y > 1.02) return false;
+        if (Math.abs(x) < 0.7) return false;
+        return true;
+      };
       for (const panel of PANELS) {
         if (panel === "fixed") continue;
-        if (inPanel(rig[panel], x, y, z)) return panel;
+        if (inPanel(rig[panel], x, y, z) && facesPanel(panel)) return panel;
       }
       return "fixed";
     };
@@ -401,16 +432,48 @@ export function HeritageVehicle({
         mat.metalness = 0.95;
         mat.roughness = 0.23;
       }
-      if (
-        (is3 && /Material.01[67]/.test(name)) ||
-        (!is3 && name === "Material.002")
-      ) {
-        mat.color.set("#141c24");
-        mat.metalness = 0.3;
-        mat.roughness = 0.09;
+      const cabinGlass = (is3 && name === "Material.017") || (!is3 && name === "Material.002");
+      const lampLens = name === "Glass" || name === "glass";
+      if (is3 && name === "Material.016") {
+        mat.color.set("#0c0e11");
+        mat.metalness = 0.12;
+        mat.roughness = 0.45;
+        mat.transparent = false;
+        mat.opacity = 1;
+        mat.depthWrite = true;
+        mat.emissive.set("#000000");
+        mat.emissiveIntensity = 0;
+      }
+      if (cabinGlass) {
+        mat.color.set("#163042");
+        mat.metalness = 0.04;
+        mat.roughness = 0.045;
         mat.clearcoat = 1;
+        mat.clearcoatRoughness = 0.04;
         mat.transparent = true;
-        mat.opacity = 0.82;
+        mat.opacity = 0.42;
+        mat.transmission = 0;
+        mat.thickness = 0;
+        mat.envMapIntensity = 1.55;
+        mat.depthWrite = true;
+        mat.polygonOffset = true;
+        mat.polygonOffsetFactor = -1;
+        mat.polygonOffsetUnits = -1;
+        mat.side = THREE.DoubleSide;
+        mat.emissive.set("#000000");
+        mat.emissiveIntensity = 0;
+      }
+      if (lampLens) {
+        mat.color.set("#1a242c");
+        mat.metalness = 0.08;
+        mat.roughness = 0.12;
+        mat.transparent = true;
+        mat.opacity = 0.55;
+        mat.transmission = 0;
+        mat.depthWrite = true;
+        mat.envMapIntensity = 0.9;
+        mat.emissive.set("#000000");
+        mat.emissiveIntensity = 0;
       }
       if (name === "LED_PHARE" || name === "emit") {
         mat.emissive.set("#e5f0ff");
@@ -438,7 +501,10 @@ export function HeritageVehicle({
       if (!g) continue;
       const angle = panelOpen(id, feature, open) ? heritageOpenAngles[id] : 0;
       const axis = id === "hood" || id === "hatch" ? "x" : "y";
-      g.rotation[axis] = THREE.MathUtils.damp(g.rotation[axis], angle, 4, dt);
+      const snap = (window as unknown as { __teslaSnap?: boolean }).__teslaSnap === true;
+      g.rotation[axis] = snap
+        ? angle
+        : THREE.MathUtils.damp(g.rotation[axis], angle, 4, dt);
     }
   });
   // Wheels are part of this static rig; lowering its root would bury the tires.

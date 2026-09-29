@@ -16,7 +16,7 @@ export const SHOTS: Record<FeatureId | "overview", Shot> = {
   charge: { position: [-3.7, 1.9, 3.5], target: [-0.7, 0.8, 1.45] },
   suspension: { position: [6.8, 1.55, -0.7], target: [0, 0.85, 0] },
   tonneau: { position: [3.8, 4.4, 5.5], target: [0, 1, 1.1] },
-  interior: { position: [-0.4, 1.12, 0.32], target: [0.02, 0.94, -0.88] },
+  interior: { position: [0.02, 1.08, 0.28], target: [0, 0.96, -1.15] },
 };
 
 const MODEL_SHOTS: Partial<Record<ModelId, Partial<Record<FeatureId | "overview", Shot>>>> = {
@@ -27,7 +27,7 @@ const MODEL_SHOTS: Partial<Record<ModelId, Partial<Record<FeatureId | "overview"
     frunk: { position: [-2.45, 3.1, -4.2], target: [0, 0.92, -1.55] },
     trunk: { position: [2.55, 2.55, 4.95], target: [0, 0.85, 1.72] },
     charge: { position: [-3.1, 1.48, 2.85], target: [-0.86, 0.82, 1.52] },
-    interior: { position: [-1.55, 1.12, 0.05], target: [0.15, 0.95, -0.15] },
+    interior: { position: [0, 0.98, 0.64], target: [0, 0.86, -1.12] },
     performance: { position: [3.5, 1.02, -2.85], target: [0.74, 0.35, -1.49] },
   },
   "model-y": {
@@ -38,7 +38,7 @@ const MODEL_SHOTS: Partial<Record<ModelId, Partial<Record<FeatureId | "overview"
     frunk: { position: [-2.55, 3.35, -4.35], target: [0, 1.02, -1.52] },
     trunk: { position: [2.75, 2.95, 5.2], target: [0, 1.02, 1.7] },
     charge: { position: [-3.25, 1.62, 3.05], target: [-0.9, 0.95, 1.62] },
-    interior: { position: [-1.7, 1.22, 0.12], target: [0.12, 1.02, -0.1] },
+    interior: { position: [0, 1.08, 0.42], target: [0, 0.98, -1.05] },
     performance: { position: [3.85, 1.12, -2.95], target: [0.78, 0.4, -1.5] },
   },
   "model-3-heritage": {
@@ -47,7 +47,7 @@ const MODEL_SHOTS: Partial<Record<ModelId, Partial<Record<FeatureId | "overview"
     doors: { position: [-5.95, 2.1, -2.55], target: [0, 0.82, -0.2] },
     frunk: { position: [-2.7, 3.65, -4.55], target: [0, 0.95, -1.3] },
     trunk: { position: [3.05, 3.25, 5.25], target: [0, 0.95, 1.38] },
-    interior: { position: [-1.5, 1.1, -0.05], target: [0.12, 0.92, -0.2] },
+    interior: { position: [0, 1.0, 0.42], target: [0, 0.9, -1.05] },
     performance: { position: [3.65, 1.08, -2.95], target: [0.72, 0.36, -1.45] },
   },
   "model-s-heritage": {
@@ -56,7 +56,7 @@ const MODEL_SHOTS: Partial<Record<ModelId, Partial<Record<FeatureId | "overview"
     doors: { position: [-6.25, 2.2, -2.75], target: [0, 0.85, -0.15] },
     frunk: { position: [-2.9, 3.8, -4.85], target: [0, 0.98, -1.45] },
     trunk: { position: [3.25, 3.4, 5.65], target: [0, 0.98, 1.52] },
-    interior: { position: [-1.62, 1.12, 0.08], target: [0.12, 0.94, -0.25] },
+    interior: { position: [0, 1.02, 0.48], target: [0, 0.92, -1.08] },
     performance: { position: [3.95, 1.12, -3.15], target: [0.74, 0.38, -1.55] },
   },
   cybertruck: {
@@ -69,7 +69,7 @@ const MODEL_SHOTS: Partial<Record<ModelId, Partial<Record<FeatureId | "overview"
     tonneau: { position: [4.2, 4.6, 6.0], target: [0, 1.4, 1.85] },
     charge: { position: [-3.6, 1.65, 4.0], target: [-0.95, 1.06, 2.38] },
     suspension: { position: [7.6, 1.55, -0.6], target: [0, 0.95, 0] },
-    interior: { position: [-1.85, 1.4, -0.15], target: [0.05, 1.15, -0.45] },
+    interior: { position: [0, 0.98, 0.12], target: [0, 0.94, -0.4] },
     performance: { position: [4.8, 1.2, -3.6], target: [0.82, 0.48, -1.96] },
   },
   cybercab: {
@@ -78,7 +78,7 @@ const MODEL_SHOTS: Partial<Record<ModelId, Partial<Record<FeatureId | "overview"
     lightbar: { position: [0.25, 1.1, -4.7], target: [0, 0.72, -1.55] },
     butterfly: { position: [-4.6, 2.2, -3.6], target: [0, 0.92, -0.15] },
     frunk: { position: [-2.4, 2.8, -3.6], target: [0, 0.72, -0.95] },
-    interior: { position: [-1.35, 0.98, 0.02], target: [0.08, 0.78, -0.25] },
+    interior: { position: [0, 0.98, 0.42], target: [0, 0.88, -0.85] },
   },
 };
 

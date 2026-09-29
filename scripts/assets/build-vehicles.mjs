@@ -245,30 +245,21 @@ function wheel(root, id, x, z, r, truck = false, cab = false) {
     quad(parent, name, [p(a0, r0), p(a1, r0), p(a1, r1), p(a0, r1)], material);
   };
   if (cab) {
-    const disc = new T.CylinderGeometry(rr * .99, rr * .99, .02, 72);
+    const disc = new T.CylinderGeometry(rr * .98, rr * .98, .016, 72);
     disc.rotateZ(Math.PI / 2);
-    disc.translate(face - side * .002, 0, 0);
+    disc.translate(face - side * .004, 0, 0);
     mesh(standard, 'aero_disc', disc, trim);
-    const bowl = new T.CylinderGeometry(rr * .72, rr * .84, .012, 48);
-    bowl.rotateZ(Math.PI / 2);
-    bowl.translate(face + side * .008, 0, 0);
-    mesh(standard, 'aero_bowl', bowl, seal);
-    for (let i = 0; i < 7; i++) {
-      const base = i / 7 * Math.PI * 2;
-      const steps = 8;
-      for (let k = 0; k < steps; k++) {
-        const t0 = k / steps, t1 = (k + 1) / steps;
-        const a0 = base + t0 * 1.35;
-        wedge(standard, 'turbine_blade', a0, a0 + .18, lerp(rr * .22, rr * .9, t0), lerp(rr * .22, rr * .9, t1), metal, .016);
-      }
-    }
-    const lip = new T.TorusGeometry(rr * .96, .01, 8, 64);
+    const dish = new T.CylinderGeometry(rr * .62, rr * .78, .01, 56);
+    dish.rotateZ(Math.PI / 2);
+    dish.translate(face + side * .006, 0, 0);
+    mesh(standard, 'aero_dish', dish, seal);
+    const lip = new T.TorusGeometry(rr * .94, .012, 8, 72);
     lip.rotateY(Math.PI / 2);
-    lip.translate(face + side * .012, 0, 0);
+    lip.translate(face + side * .008, 0, 0);
     mesh(standard, 'aero_lip', lip, metal);
-    const cap = new T.CylinderGeometry(rr * .14, rr * .14, .012, 28);
+    const cap = new T.CylinderGeometry(rr * .12, rr * .12, .01, 28);
     cap.rotateZ(Math.PI / 2);
-    cap.translate(face + side * .02, 0, 0);
+    cap.translate(face + side * .014, 0, 0);
     mesh(standard, 'aero_cap', cap, metal);
   } else if (truck) {
     const cover = new T.CylinderGeometry(rr * .97, rr * .97, .016, 64);
@@ -357,7 +348,13 @@ function cabin(parent, {
   for (let i = 0; i < 6; i++) box(g, 'screen_control', [.017, .007, .002], [-.1 + i * .04, .904, -.698], metal, .002);
   box(g, 'display_divider', [.001, .17, .002], [-.045, .993, -.695], metal, .0003);
   for (let i = 0; i < 3; i++) tube(g, 'map_road', [[.00, .95 + i * .04, -.697], [.05, 1 + i * .012, -.697], [.13, .968 + i * .025, -.697]], .0015, metal, 12);
-  if (!cab) {
+  if (cab) {
+    const yoke = group(g, 'yoke', [0, .9, -.58]);
+    yoke.rotation.x = .32;
+    box(yoke, 'yoke_bar', [.42, .042, .036], [0, .02, 0], trim, .012);
+    box(yoke, 'yoke_stem', [.048, .12, .036], [0, -.05, .02], trim, .01);
+    box(yoke, 'yoke_hub', [.11, .046, .03], [0, .02, .02], trim, .01);
+  } else {
     const steering = group(g, 'steering', [-.43, .96, -.6]);
     steering.rotation.x = .24;
     const geo = new T.TorusGeometry(.15, .015, 10, 48);
@@ -809,24 +806,24 @@ function cybercab(root) {
     r = .33,
     frontAxle = -1.2,
     rearAxle = 1.2,
-    archR = .4;
+    archR = .38;
   const body = group(root, 'body');
   const doorStart = -.78, doorEnd = .92, glassStart = -.9, glassEnd = 1.02;
-  const hood = pivot(body, 'hood', [0, .9, glassStart]);
-  const hatch = pivot(body, 'tailgate', [0, .7, 1.15]);
+  const hood = pivot(body, 'hood', [0, .78, glassStart]);
+  const hatch = pivot(body, 'tailgate', [0, 1.05, 1.25]);
   const doors = {};
-  for (const s of [-1, 1]) doors[s] = pivot(body, s < 0 ? 'door_fl' : 'door_fr', [s * .28, 1.22, .05]);
+  for (const s of [-1, 1]) doors[s] = pivot(body, s < 0 ? 'door_fl' : 'door_fr', [s * .18, 1.34, .02]);
   const stations = [
-    [-half, .34, .3, .46, .5],
-    [-half + .22, .66, .26, .6, .68],
-    [-1.5, .88, .22, .84, .98],
-    [-.9, .93, .2, .9, 1.18],
-    [-.2, .93, .2, .92, 1.38],
-    [.45, .92, .2, .9, 1.4],
-    [1.05, .86, .22, .82, 1.12],
-    [1.55, .7, .24, .66, .78],
-    [half - .12, .48, .28, .5, .56],
-    [half, .32, .32, .42, .46]
+    [-half, .42, .28, .48, .52],
+    [-half + .28, .72, .24, .62, .74],
+    [-1.55, .9, .22, .86, 1.02],
+    [-1.05, .93, .2, .9, 1.16],
+    [-.35, .93, .2, .92, 1.32],
+    [.35, .93, .2, .92, 1.36],
+    [.95, .9, .21, .88, 1.22],
+    [1.4, .82, .22, .78, 1.02],
+    [half - .18, .62, .24, .64, .78],
+    [half, .4, .28, .5, .58]
   ];
   const widthAt = z => spline(stations, z, 1),
     rockerAt = z => spline(stations, z, 2),
@@ -898,13 +895,20 @@ function cybercab(root) {
   box(body, 'undertray', [1.5, .04, 3.5], [0, .16, 0], trim, .006);
   box(body, 'front_valence', [1.35, .1, .08], [0, .3, -half + .06], trim, .02);
   box(body, 'rear_valence', [1.15, .08, .07], [0, .3, half - .04], trim, .016);
-  box(body, 'lightbar_housing', [1.55, .045, .03], [0, .64, -half + .06], seal, .008);
-  ledRow(body, 'cab_lightbar', -.7, .7, .655, -half - .002, blade, .012, .006);
+  box(body, 'lightbar_housing', [1.62, .028, .02], [0, .58, -half + .05], seal, .006);
+  ledRow(body, 'cab_lightbar', -.78, .78, .582, -half - .004, blade, .01, .004);
   for (const s of [-1, 1]) {
-    box(body, 'corner_lamp', [.16, .028, .012], [s * .62, .6, -half + .02], white, .004);
-    box(body, 'corner_lens', [.15, .022, .006], [s * .62, .6, -half + .004], lens, .003);
+    box(body, 'corner_lamp', [.18, .02, .01], [s * .62, .545, -half + .03], white, .004);
+    box(body, 'corner_lens', [.17, .016, .006], [s * .62, .545, -half + .012], lens, .003);
+    box(body, 'rocker_cladding', [.06, .16, 3.3], [s * (w - .02), .28, 0], trim, .012);
+    for (const axle of [frontAxle, rearAxle]) {
+      const liner = new T.CylinderGeometry(archR * .92, archR * .92, .08, 28, 1, false, 0, Math.PI);
+      liner.rotateZ(Math.PI / 2);
+      liner.translate(s * (w - .06), r, axle);
+      mesh(body, 'arch_liner', liner, seal);
+    }
   }
-  ledRow(hatch, 'rear_light_bar', -.55, .55, .62, half + .004, tail, .012, .006);
+  ledRow(hatch, 'rear_light_bar', -.78, .78, .7, half + .006, tail, .012, .005);
   sphere(body, 'front_camera', [.012, .01, .014], [0, .78, -half + .02], lens);
   cabin(body, { cab: true, lift: 0, width: 1.7 });
   for (const s of [-1, 1]) {
@@ -971,7 +975,8 @@ async function exportPreview(root, id) {
   });
   await fs.writeFile(`${preview}/${id}.json.gz`, gzipSync(JSON.stringify(data)));
 }
-const report = {
+const only = process.env.ASSET_ONLY;
+let report = {
   version: 1,
   author: 'Tesla Studio original assets',
   units: 'metres',
@@ -979,7 +984,11 @@ const report = {
   up: '+Y',
   vehicles: {}
 };
+if (only) {
+  report = JSON.parse(await fs.readFile(`${out}/manifest.json`, 'utf8'));
+}
 for (const id of ['model-3', 'model-y', 'cybertruck', 'cybercab']) {
+  if (only && id !== only) continue;
   paint.color.set(id === 'cybercab' ? '#b69657' : id === 'model-y' ? '#b4bec6' : '#a7222a');
   const root = new T.Group();
   root.name = id;

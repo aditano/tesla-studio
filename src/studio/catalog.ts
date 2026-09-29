@@ -228,7 +228,7 @@ export const VEHICLES: VehicleDef[] = [
     name: "Model 3",
     tag: "Highland",
     marketNote:
-      "North America 2026 presentation. Paint and wheel names match Tesla's US Design Studio; which trims offer them is illustrative. Licensed artist mesh. The body stays closed; door, hood and trunk tours are camera studies.",
+      "North America 2026 presentation. Paint and wheel names match Tesla's US Design Studio; which trims offer them is illustrative. Licensed artist mesh. Doors, hood and trunk are cut from the shell and swing on their hinge lines.",
     variants: [
       {
         id: "rwd",
@@ -269,19 +269,16 @@ export const VEHICLES: VehicleDef[] = [
         id: "doors",
         label: "Doors",
         hint: "Frameless four-door cabin",
-        cameraOnly: true,
       },
       {
         id: "frunk",
         label: "Frunk",
         hint: "Front storage",
-        cameraOnly: true,
       },
       {
         id: "trunk",
         label: "Trunk",
         hint: "Rear cargo",
-        cameraOnly: true,
       },
       {
         id: "charge",
@@ -295,14 +292,14 @@ export const VEHICLES: VehicleDef[] = [
         hint: "Minimalist Highland interior",
       },
     ],
-    parts: [],
+    parts: ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk"],
   },
   {
     id: "model-y",
     name: "Model Y",
     tag: "Juniper",
     marketNote:
-      "Juniper mesh by BloxBloger on Sketchfab, CC BY-NC 4.0. The body stays closed; door, hood and liftgate tours are camera studies. North America 2026 presentation names; trim availability is illustrative.",
+      "Juniper mesh by BloxBloger on Sketchfab, CC BY-NC 4.0. Doors, hood and liftgate swing on hinge lines cut from the shell. North America 2026 presentation names; trim availability is illustrative.",
     variants: [
       {
         id: "rwd",
@@ -340,19 +337,16 @@ export const VEHICLES: VehicleDef[] = [
         id: "doors",
         label: "Doors",
         hint: "Four-door cabin",
-        cameraOnly: true,
       },
       {
         id: "frunk",
         label: "Frunk",
         hint: "Front trunk",
-        cameraOnly: true,
       },
       {
         id: "trunk",
         label: "Liftgate",
         hint: "Rear cargo",
-        cameraOnly: true,
       },
       {
         id: "charge",
@@ -362,14 +356,14 @@ export const VEHICLES: VehicleDef[] = [
       },
       { id: "interior", label: "Inside the cabin", hint: "Minimalist Juniper interior" },
     ],
-    parts: [],
+    parts: ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk"],
   },
   {
     id: "cybertruck",
     name: "Cybertruck",
     tag: "Exoskeleton",
     marketNote:
-      "Cybertruck mesh by Nieve5677 on Sketchfab, CC BY 4.0. Length follows the owner manual (5.6829 m); the export is wider than the 2.03 m body, so the studio keeps it near 2.2 m. The body stays closed. Panel tours and air suspension are camera studies because the wheels are part of that shell. Illustrative finishes, not factory CAD, and not a Tesla product.",
+      "Cybertruck mesh by Nieve5677 on Sketchfab, CC BY 4.0. Length follows the owner manual (5.6829 m) and the body is scaled to the 2.03 m width. Doors, hood, tonneau and tailgate hinge off that shell. Air suspension stays a camera study because the wheels are part of the shell, so the body is not raised. Illustrative finishes, not factory CAD, and not a Tesla product.",
     variants: [
       {
         id: "awd",
@@ -399,6 +393,11 @@ export const VEHICLES: VehicleDef[] = [
     features: [
       { id: "lightbar", label: "Light bar", hint: "Full-width LED blade" },
       {
+        id: "doors",
+        label: "Doors",
+        hint: "Four doors on the exoskeleton",
+      },
+      {
         id: "suspension",
         label: "Air suspension",
         hint: "Side view of the stance",
@@ -408,19 +407,16 @@ export const VEHICLES: VehicleDef[] = [
         id: "tonneau",
         label: "Tonneau",
         hint: "Power tonneau cover",
-        cameraOnly: true,
       },
       {
         id: "frunk",
         label: "Frunk",
         hint: "Front vault",
-        cameraOnly: true,
       },
       {
         id: "trunk",
         label: "Bed",
         hint: "Stainless vault",
-        cameraOnly: true,
       },
       { id: "headlights", label: "Headlights", hint: "Matrix projectors" },
       {
@@ -431,14 +427,14 @@ export const VEHICLES: VehicleDef[] = [
       },
       { id: "interior", label: "Inside the cabin", hint: "Yoke and vault interior" },
     ],
-    parts: [],
+    parts: ["door-fl", "door-fr", "door-rl", "door-rr", "frunk", "trunk", "tonneau"],
   },
   {
     id: "cybercab",
     name: "Cybercab",
     tag: "Robotaxi",
     marketNote:
-      "Concept two-seater. The viewer uses the original authored study because the CC BY 4.0 zwir3kk scan still needs a Sketchfab login to download. Proportions are estimates, not a production specification.",
+      "Concept two-seater. The viewer uses a rebuilt original study because the CC BY 4.0 zwir3kk scan still needs a Sketchfab login to download. Proportions are estimates, not a production specification.",
     variants: [
       {
         id: "cab",
@@ -450,9 +446,9 @@ export const VEHICLES: VehicleDef[] = [
       },
     ],
     exteriors: [
+      PAINT["cab-gold"],
       PAINT["cab-white"],
       PAINT["stealth-grey"],
-      PAINT["cab-gold"],
       PAINT["diamond-black"],
       PAINT.quicksilver,
     ],

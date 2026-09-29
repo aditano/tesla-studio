@@ -51,8 +51,8 @@ const RIGS: Record<string, Rig> = {
   "model-3": {
     noseZ: -2.36,
     spots: [
-      [-0.62, 0.64, -2.16],
-      [0.62, 0.64, -2.16],
+      [-0.74, 0.6, -2.2],
+      [0.74, 0.6, -2.2],
     ],
     // Upper lens edge rises from y 0.64 inboard to 0.70 at the outer tip.
     strips: [
@@ -61,7 +61,7 @@ const RIGS: Record<string, Rig> = {
         height: 0.01,
       },
     ],
-    projectors: [{ x: 0.63, y: 0.618, radius: 0.017 }],
+    projectors: [{ x: 0.74, y: 0.6, radius: 0.02 }],
     surface: /lamp_lens|headlight_led/,
   },
   // Juniper: full-width blade on the upper housing band, projectors below.
@@ -285,9 +285,9 @@ function Spot({
   const light = useRef<THREE.SpotLight>(null);
   const target = useRef<THREE.Object3D>(null);
   const aim: [number, number, number] = [
-    position[0] * 0.2,
-    0.02,
-    noseZ - 8.5,
+    position[0],
+    0.012,
+    position[2] - 3.05,
   ];
   useFrame(() => {
     const spot = light.current;
@@ -301,17 +301,61 @@ function Spot({
       <spotLight
         ref={light}
         position={position}
-        angle={0.26}
-        penumbra={1}
-        distance={12}
+        angle={0.16}
+        penumbra={0.9}
+        distance={8}
         decay={2}
-        intensity={intensity}
+        intensity={intensity * 0.45}
         color="#e7eef8"
         castShadow={false}
       />
       <object3D ref={target} position={aim} />
     </>
   );
+}
+
+/** One low-beam pool on the road, projected forward from a lamp. The winding
+ * is counter-clockwise from above, so the face points up. */
+export function beamPoolGeometry(
+  origin: [number, number, number],
+  groundY = 0.01,
+) {
+  const [x, , z] = origin;
+  const side = x < 0 ? -1 : 1;
+  const near = z - 0.18;
+  const far = z - 3.05;
+  const w0 = 0.14;
+  const w1 = 0.62;
+  const x0 = x;
+  const x1 = x + side * 0.28;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(
+      [
+        x0 - w0,
+        groundY,
+        near,
+        x0 + w0,
+        groundY,
+        near,
+        x1 - w1,
+        groundY,
+        far,
+        x1 + w1,
+        groundY,
+        far,
+      ],
+      3,
+    ),
+  );
+  geo.setAttribute(
+    "uv",
+    new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 1, 1], 2),
+  );
+  geo.setIndex([0, 1, 2, 1, 3, 2]);
+  geo.computeVertexNormals();
+  return geo;
 }
 
 /** Trapezoid on the road ahead of the nose, wide end away from the car. The
@@ -343,28 +387,40 @@ export function poolGeometry(noseZ: number) {
 }
 
 function Pool({
-  noseZ,
+  spots,
   opacity,
   map,
+  groundY,
 }: {
-  noseZ: number;
+  spots: [number, number, number][];
   opacity: number;
   map: THREE.Texture;
+  groundY: number;
 }) {
-  const geometry = useMemo(() => poolGeometry(noseZ), [noseZ]);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+  const geometries = useMemo(
+    () => spots.map((spot) => beamPoolGeometry(spot, groundY)),
+    [spots, groundY],
+  );
+  useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries]);
   if (opacity <= 0) return null;
   return (
-    <mesh geometry={geometry} renderOrder={2}>
-      <meshBasicMaterial
-        map={map}
-        color="#d5e2f4"
-        transparent
-        opacity={opacity}
-        depthWrite={false}
-        toneMapped
-      />
-    </mesh>
+    <>
+      {geometries.map((geometry, index) => (
+        <mesh key={index} geometry={geometry} renderOrder={2}>
+          <meshBasicMaterial
+            map={map}
+            color="#d5e2f4"
+            transparent
+            opacity={opacity}
+            depthWrite={false}
+            toneMapped
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
+        </mesh>
+      ))}
+    </>
   );
 }
 
@@ -487,6 +543,15 @@ export function LampBeams({
   const pool = usePoolMap();
   const rig = RIGS[model] ?? RIGS["model-3"];
   const snap = useSurfaceSnap(body, rig.surface);
+  const spots = useMemo(() => {
+    if (!snap) return rig.spots;
+    return rig.spots.map((position) => {
+      const hit = snap(position[0], position[1]);
+      if (!hit) return position;
+      const point = hit.point.clone().addScaledVector(hit.normal, 0.03);
+      return [point.x, point.y, point.z] as [number, number, number];
+    });
+  }, [snap, rig]);
   const lamps = useMemo(() => (snap ? buildLamps(model, snap) : []), [snap, model]);
   useEffect(() => () => lamps.forEach((l) => l.geometry.dispose()), [lamps]);
   const follow = useRef<THREE.Group>(null);
@@ -508,7 +573,7 @@ export function LampBeams({
           />
         ))}
       </group>
-      {rig.spots.map((position, index) => (
+      {spots.map((position, index) => (
         <Spot
           key={`spot-${index}`}
           position={position}
@@ -516,7 +581,12 @@ export function LampBeams({
           intensity={on ? backdrop.beam : 0}
         />
       ))}
-      <Pool noseZ={rig.noseZ} opacity={on ? backdrop.pool : 0} map={pool} />
+      <Pool
+        spots={spots}
+        opacity={on ? backdrop.pool : 0}
+        map={pool}
+        groundY={backdrop.mirror ? 0.01 : 0.046}
+      />
     </group>
   );
 }
