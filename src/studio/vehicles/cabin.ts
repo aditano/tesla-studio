@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import type { ModelId } from "../catalog";
+import { shotFor } from "../scene/shots";
 
 export type ScreenKind = "landscape" | "portrait" | "cluster";
 
@@ -187,27 +189,165 @@ function add(
   parent.add(mesh);
 }
 
-function seat(
+const INTERIOR_ASPECT = 1;
+const INTERIOR_FOV = 50;
+
+function interiorCamera(model: ModelId) {
+  const shot = shotFor(model, "interior");
+  const cam = new THREE.PerspectiveCamera(INTERIOR_FOV, INTERIOR_ASPECT, 0.05, 40);
+  cam.position.set(shot.position[0], shot.position[1], shot.position[2]);
+  cam.lookAt(shot.target[0], shot.target[1], shot.target[2]);
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+
+/** A point that projects to `ndcX, ndcY` on the fov-50 interior shot. */
+function onInteriorView(
+  cam: THREE.PerspectiveCamera,
+  ndcX: number,
+  ndcY: number,
+  depth: number,
+) {
+  const origin = cam.position.clone();
+  const dir = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(cam).sub(origin).normalize();
+  return origin.add(dir.multiplyScalar(depth));
+}
+
+function viewSpan(depth: number, ndcSpan: number) {
+  return ndcSpan * depth * Math.tan(THREE.MathUtils.degToRad(INTERIOR_FOV / 2));
+}
+
+/** Parent the object so its world origin is `worldPoint` and its axes match the interior camera.
+ * Camera local +Z points back at the lens, so a box's broad face is what the shot sees. */
+function mount(
+  parent: THREE.Object3D,
+  object: THREE.Object3D,
+  cam: THREE.PerspectiveCamera,
+  worldPoint: THREE.Vector3,
+) {
+  parent.updateWorldMatrix(true, false);
+  object.position.copy(parent.worldToLocal(worldPoint.clone()));
+  const parentQuat = new THREE.Quaternion();
+  parent.getWorldQuaternion(parentQuat);
+  object.quaternion.copy(parentQuat.invert()).multiply(cam.quaternion);
+  parent.add(object);
+}
+
+function faced(
+  parent: THREE.Object3D,
+  material: THREE.Material,
+  name: string,
+  cam: THREE.PerspectiveCamera,
+  ndcX: number,
+  ndcY: number,
+  depth: number,
+  ndcW: number,
+  ndcH: number,
+  thick = 0.03,
+) {
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(viewSpan(depth, ndcW), viewSpan(depth, ndcH), thick),
+    material,
+  );
+  mesh.name = name;
+  mesh.userData.cabin = true;
+  mesh.userData.noPanel = true;
+  mesh.userData.presentationDetail = true;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mount(parent, mesh, cam, onInteriorView(cam, ndcX, ndcY, depth));
+  return mesh;
+}
+
+function put(
+  parent: THREE.Object3D,
+  mesh: THREE.Mesh,
+  name: string,
+  worldPoint: THREE.Vector3,
+) {
+  parent.updateWorldMatrix(true, false);
+  mesh.position.copy(parent.worldToLocal(worldPoint.clone()));
+  add(parent, mesh, name);
+}
+
+/** Seat backs stay upright in the car. Only the dash and screen face the lens. */
+function seatInView(
   parent: THREE.Object3D,
   materials: Kit,
   name: string,
-  x: number,
-  y: number,
-  z: number,
-  wide = 0.36,
-  tall = 1,
+  cam: THREE.PerspectiveCamera,
+  ndcX: number,
+  ndcY: number,
+  depth: number,
 ) {
-  const cushion = new THREE.Mesh(new THREE.BoxGeometry(wide, 0.1, 0.42), materials.leather);
-  cushion.position.set(x, y, z);
-  add(parent, cushion, `${name}_cushion`);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(wide * 0.92, 0.58 * tall, 0.1), materials.leather);
-  back.position.set(x, y + 0.36 * tall, z + 0.16);
-  back.rotation.x = -0.18;
-  add(parent, back, `${name}_back`);
-  const rest = new THREE.Mesh(new THREE.BoxGeometry(wide * 0.42, 0.14 * tall, 0.08), materials.leather);
-  rest.position.set(x, y + 0.68 * tall, z + 0.12);
-  rest.rotation.x = -0.18;
-  add(parent, rest, `${name}_rest`);
+  const tall = viewSpan(depth, 0.5);
+  const wide = viewSpan(depth, 0.3);
+  const anchor = onInteriorView(cam, ndcX, ndcY, depth);
+  const toCam = cam.position.clone().sub(anchor).normalize();
+  const back = new THREE.Mesh(
+    new THREE.BoxGeometry(wide, tall * 0.62, Math.max(0.05, wide * 0.28)),
+    materials.leather,
+  );
+  back.rotation.x = -0.22;
+  put(parent, back, `${name}_cushion`, anchor);
+  const rest = new THREE.Mesh(
+    new THREE.BoxGeometry(wide * 0.46, tall * 0.2, Math.max(0.045, wide * 0.24)),
+    materials.leather,
+  );
+  rest.rotation.x = -0.22;
+  put(parent, rest, `${name}_rest`, anchor.clone().setY(anchor.y + tall * 0.4));
+  const pan = anchor.clone().addScaledVector(toCam, wide * 0.42);
+  pan.y -= tall * 0.34;
+  put(
+    parent,
+    new THREE.Mesh(new THREE.BoxGeometry(wide * 0.92, Math.max(0.04, tall * 0.14), wide * 0.95), materials.leather),
+    `${name}_pan`,
+    pan,
+  );
+  for (const side of [-1, 1]) {
+    const bolster = pan.clone();
+    bolster.x += side * wide * 0.38;
+    bolster.y += tall * 0.08;
+    put(
+      parent,
+      new THREE.Mesh(
+        new THREE.BoxGeometry(wide * 0.16, tall * 0.28, wide * 0.72),
+        materials.leather,
+      ),
+      `${name}_bolster_${side > 0 ? "r" : "l"}`,
+      bolster,
+    );
+  }
+}
+
+function yokeInView(
+  parent: THREE.Object3D,
+  material: THREE.Material,
+  cam: THREE.PerspectiveCamera,
+  ndcX: number,
+  ndcY: number,
+  depth: number,
+) {
+  const wide = viewSpan(depth, 0.34);
+  const tall = viewSpan(depth, 0.22);
+  const group = new THREE.Group();
+  group.name = "cybertruck_cabin_yoke";
+  const bar = (w: number, h: number, x: number, y: number) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.012), material);
+    mesh.position.set(x, y, 0);
+    mesh.castShadow = true;
+    group.add(mesh);
+  };
+  bar(wide, tall * 0.16, 0, tall * 0.34);
+  bar(wide * 0.7, tall * 0.14, 0, -tall * 0.34);
+  bar(wide * 0.1, tall * 0.78, -wide * 0.34, 0);
+  bar(wide * 0.1, tall * 0.78, wide * 0.34, 0);
+  group.traverse((child) => {
+    child.userData.cabin = true;
+    child.userData.noPanel = true;
+    child.userData.presentationDetail = true;
+  });
+  mount(parent, group, cam, onInteriorView(cam, ndcX, ndcY, depth));
 }
 
 /** Seats, a dash, a display and trim, placed for the interior camera of each car. */
@@ -237,57 +377,26 @@ export function addCabinKit(
     return;
   }
   if (kind === "juniper") {
+    const cam = interiorCamera("model-y");
     const mats = kitMaterials(materials, "landscape");
-    const pad = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.018, 0.03), mats.dash);
-    pad.position.set(0.04, 1.045, -0.64);
-    pad.rotation.x = -0.4;
-    add(parent, pad, "juniper_cabin_dash");
-    const screen = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.11, 0.012), mats.display);
-    screen.position.set(0.02, 1.0, -0.5);
-    screen.rotation.x = -0.18;
-    add(parent, screen, "juniper_cabin_screen");
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.01, 0.012), mats.trim);
-    strip.position.set(0.04, 0.94, -0.56);
-    add(parent, strip, "juniper_cabin_trim");
-    seat(parent, mats, "juniper_cabin_l", -0.38, 0.74, -0.42, 0.26, 0.4);
-    seat(parent, mats, "juniper_cabin_r", 0.38, 0.74, -0.42, 0.26, 0.4);
+    faced(parent, mats.dash, "juniper_cabin_dash", cam, 0.02, -0.1, 1.02, 0.58, 0.26, 0.04);
+    faced(parent, mats.display, "juniper_cabin_screen", cam, 0.02, -0.02, 0.94, 0.4, 0.15, 0.012);
+    faced(parent, mats.trim, "juniper_cabin_trim", cam, 0.02, -0.24, 1.0, 0.5, 0.035, 0.012);
+    seatInView(parent, mats, "juniper_cabin_l", cam, -0.5, -0.42, 0.7);
+    seatInView(parent, mats, "juniper_cabin_r", cam, 0.5, -0.42, 0.7);
     return;
   }
   if (kind === "cybertruck") {
+    const cam = interiorCamera("cybertruck");
     const mats = kitMaterials(materials, "landscape");
-    const shelf = new THREE.Mesh(new THREE.BoxGeometry(0.92, 0.035, 0.12), mats.dash);
-    shelf.position.set(0.02, 0.94, -0.34);
-    add(parent, shelf, "cybertruck_cabin_dash");
-    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.86, 0.028, 0.018), mats.dash);
-    blade.position.set(0.02, 1.08, -0.4);
-    blade.rotation.x = 0.12;
-    add(parent, blade, "cybertruck_cabin_blade");
-    const screen = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.07, 0.01), mats.display);
-    screen.position.set(0.04, 1.01, -0.36);
-    screen.rotation.x = -0.1;
-    add(parent, screen, "cybertruck_cabin_screen");
-    const yoke = new THREE.Group();
-    yoke.name = "cybertruck_cabin_yoke";
-    yoke.position.set(-0.06, 1.02, -0.12);
-    yoke.userData.cabin = true;
-    yoke.userData.noPanel = true;
-    yoke.userData.presentationDetail = true;
-    const bar = (w: number, h: number, x: number, y: number) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.02), mats.trim);
-      mesh.position.set(x, y, 0);
-      mesh.castShadow = true;
-      yoke.add(mesh);
-    };
-    bar(0.16, 0.022, 0, 0.01);
-    bar(0.12, 0.02, 0, -0.07);
-    bar(0.018, 0.08, -0.06, -0.03);
-    bar(0.018, 0.08, 0.06, -0.03);
-    parent.add(yoke);
-    seat(parent, mats, "cybertruck_cabin_l", -0.2, 0.88, -0.28, 0.14, 0.28);
-    seat(parent, mats, "cybertruck_cabin_r", 0.2, 0.88, -0.28, 0.14, 0.28);
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.02, 0.45), mats.carpet);
-    floor.position.set(0.02, 0.88, -0.12);
-    add(parent, floor, "cybertruck_cabin_floor");
+    faced(parent, mats.dash, "cybertruck_cabin_dash", cam, 0.06, -0.1, 0.62, 0.7, 0.28, 0.045);
+    faced(parent, mats.dash, "cybertruck_cabin_blade", cam, 0.06, 0.16, 0.66, 0.78, 0.055, 0.018);
+    faced(parent, mats.trim, "cybertruck_cabin_cheek_l", cam, -0.58, -0.02, 0.58, 0.2, 0.62, 0.02);
+    faced(parent, mats.trim, "cybertruck_cabin_cheek_r", cam, 0.62, -0.02, 0.58, 0.2, 0.62, 0.02);
+    faced(parent, mats.display, "cybertruck_cabin_screen", cam, 0.12, 0.0, 0.54, 0.34, 0.15, 0.012);
+    yokeInView(parent, mats.trim, cam, -0.22, -0.02, 0.46);
+    seatInView(parent, mats, "cybertruck_cabin_l", cam, -0.46, -0.32, 0.5);
+    seatInView(parent, mats, "cybertruck_cabin_r", cam, 0.48, -0.32, 0.5);
     return;
   }
   if (kind === "cybercab") {
@@ -297,28 +406,27 @@ export function addCabinKit(
     add(parent, strip, "cybercab_dash_trim");
     return;
   }
-  const screenKind = kind === "heritage-s" ? "portrait" : "portrait";
-  const mats = kitMaterials(materials, screenKind);
-  const dash = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.02, 0.03), mats.dash);
-  dash.position.set(0.02, kind === "heritage-s" ? 0.8 : 0.78, kind === "heritage-s" ? -0.42 : -0.64);
-  add(parent, dash, "heritage_dash");
-  const screen = new THREE.Mesh(
-    new THREE.BoxGeometry(0.16, kind === "heritage-s" ? 0.18 : 0.22, 0.012),
-    mats.display,
+  const model: ModelId = kind === "heritage-s" ? "model-s-heritage" : "model-3-heritage";
+  const cam = interiorCamera(model);
+  const mats = kitMaterials(materials, "portrait");
+  const dashDepth = kind === "heritage-s" ? 0.98 : 1.04;
+  faced(parent, mats.dash, "heritage_dash", cam, 0.12, -0.08, dashDepth, 0.66, 0.34, 0.05);
+  const cap = new THREE.Mesh(
+    new THREE.BoxGeometry(viewSpan(dashDepth, 0.64), 0.04, viewSpan(dashDepth, 0.16)),
+    mats.dash,
   );
-  screen.position.set(0.06, 0.88, kind === "heritage-s" ? -0.43 : -0.66);
-  screen.rotation.x = -0.06;
-  add(parent, screen, "heritage_screen");
+  put(parent, cap, "heritage_dash_cap", onInteriorView(cam, 0.12, 0.08, dashDepth - 0.03));
+  faced(parent, mats.display, "heritage_screen", cam, 0.16, 0.02, dashDepth - 0.08, 0.2, 0.36, 0.012);
   if (kind === "heritage-s") {
     const clusterMat = kitMaterials(materials, "cluster").display;
-    const cluster = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.055, 0.01), clusterMat);
-    cluster.position.set(-0.26, 0.93, -0.44);
-    cluster.rotation.x = -0.16;
-    add(parent, cluster, "heritage_cluster");
+    faced(parent, clusterMat, "heritage_cluster", cam, -0.14, 0.08, dashDepth - 0.07, 0.24, 0.1, 0.01);
   }
-  const strip = new THREE.Mesh(new THREE.BoxGeometry(0.84, 0.012, 0.012), mats.trim);
-  strip.position.set(0.02, kind === "heritage-s" ? 0.78 : 0.76, kind === "heritage-s" ? -0.4 : -0.62);
-  add(parent, strip, "heritage_trim");
-  seat(parent, mats, "heritage_l", -0.4, 0.7, -0.45, 0.26, 0.4);
-  seat(parent, mats, "heritage_r", 0.4, 0.7, -0.45, 0.26, 0.4);
+  faced(parent, mats.trim, "heritage_trim", cam, 0.12, -0.26, dashDepth - 0.02, 0.56, 0.032, 0.012);
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(viewSpan(0.85, 1.1), 0.03, viewSpan(0.85, 0.7)),
+    mats.carpet,
+  );
+  put(parent, floor, "heritage_floor", onInteriorView(cam, 0.05, -0.58, 0.85));
+  seatInView(parent, mats, "heritage_l", cam, -0.46, -0.4, 0.72);
+  seatInView(parent, mats, "heritage_r", cam, 0.46, -0.4, 0.72);
 }

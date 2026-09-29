@@ -267,6 +267,144 @@ function assertUpholstery(label: string, materials: THREE.Material[]) {
   applyInteriorFinish(mat, INTERIORS.black);
   assert.equal("#" + mat.color.getHexString(), INTERIORS.black.leather.toLowerCase(), `${label} black upholstery`);
 }
+
+/** Where a shipped mesh lands in the fov-50 interior shot. Aspect 1 is the narrow case. */
+function interiorView(model: ModelId) {
+  const shot = shotFor(model, "interior");
+  const cam = new THREE.PerspectiveCamera(50, 1, 0.05, 40);
+  cam.position.set(shot.position[0], shot.position[1], shot.position[2]);
+  cam.lookAt(shot.target[0], shot.target[1], shot.target[2]);
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+function visibleMass(cam: THREE.PerspectiveCamera, object: THREE.Object3D) {
+  const xs: number[] = [];
+  const ys: number[] = [];
+  object.updateWorldMatrix(true, true);
+  object.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    const pos = child.geometry?.getAttribute("position");
+    if (!pos) return;
+    const step = Math.max(1, Math.floor(pos.count / 240));
+    for (let i = 0; i < pos.count; i += step) {
+      const world = new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(child.matrixWorld);
+      if (world.clone().applyMatrix4(cam.matrixWorldInverse).z >= -0.02) continue;
+      const ndc = world.project(cam);
+      if (Math.abs(ndc.x) > 1 || Math.abs(ndc.y) > 1) continue;
+      xs.push(ndc.x);
+      ys.push(ndc.y);
+    }
+  });
+  if (xs.length < 4) return null;
+  xs.sort((a, b) => a - b);
+  ys.sort((a, b) => a - b);
+  return {
+    n: xs.length,
+    cx: xs[Math.floor(xs.length / 2)],
+    cy: ys[Math.floor(ys.length / 2)],
+    w: xs[xs.length - 1] - xs[0],
+    h: ys[ys.length - 1] - ys[0],
+  };
+}
+function worldDims(object: THREE.Object3D) {
+  const size = new THREE.Box3().setFromObject(object).getSize(new THREE.Vector3());
+  return [size.x, size.y, size.z].sort((a, b) => b - a);
+}
+function assertOnScreen(model: string, name: string, mass: { cx: number; cy: number; w: number; h: number } | null, limits: { cx: number; cy: number; w: number; h: number }) {
+  assert.ok(mass, `${model} ${name} misses the interior shot`);
+  assert.ok(
+    Math.abs(mass!.cx) <= limits.cx && Math.abs(mass!.cy) <= limits.cy && mass!.w >= limits.w && mass!.h >= limits.h,
+    `${model} ${name} is too small or too far off-center in the interior shot (${mass!.cx.toFixed(2)}, ${mass!.cy.toFixed(2)}, ${mass!.w.toFixed(2)}×${mass!.h.toFixed(2)})`,
+  );
+}
+function assertLeatherSides(root: THREE.Object3D, cam: THREE.PerspectiveCamera, model: string) {
+  const left: number[] = [];
+  const right: number[] = [];
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    if (!materials.some((m) => m.name === "interior_leather" || /seat/i.test(child.name))) return;
+    const pos = child.geometry?.getAttribute("position");
+    if (!pos) return;
+    const step = Math.max(1, Math.floor(pos.count / 800));
+    for (let i = 0; i < pos.count; i += step) {
+      const world = new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(child.matrixWorld);
+      if (world.clone().applyMatrix4(cam.matrixWorldInverse).z >= -0.02) continue;
+      const ndc = world.project(cam);
+      if (Math.abs(ndc.x) > 1 || Math.abs(ndc.y) > 1) continue;
+      if (ndc.x < -0.12) left.push(ndc.y);
+      if (ndc.x > 0.12) right.push(ndc.y);
+    }
+  });
+  for (const [side, ys] of [["left", left], ["right", right]] as const) {
+    assert.ok(ys.length >= 6, `${model} ${side} seat is not in the interior shot (${ys.length} samples)`);
+    const span = Math.max(...ys) - Math.min(...ys);
+    assert.ok(span >= 0.15, `${model} ${side} seat is only a sliver in the interior shot (${span.toFixed(2)})`);
+  }
+}
+function assertCabinFramed(root: THREE.Object3D, model: ModelId) {
+  const cam = interiorView(model);
+  root.updateWorldMatrix(true, true);
+  if (model === "cybercab") {
+    const meshes: THREE.Mesh[] = [];
+    root.traverse((o) => { if (o instanceof THREE.Mesh) meshes.push(o); });
+    const role = (mesh: THREE.Mesh) => {
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      return materials[0]?.name ?? "";
+    };
+    const display = meshes.filter((mesh) => role(mesh) === "display").map((mesh) => visibleMass(cam, mesh)).filter((mass) => mass && mass.w >= 0.15 && mass.h >= 0.08 && Math.abs(mass.cx) <= 0.45);
+    assert.ok(display.length, "Cybercab display misses the interior shot");
+    const dash = meshes.filter((mesh) => role(mesh) === "dashboard").map((mesh) => ({ mass: visibleMass(cam, mesh), mesh })).filter((item) => item.mass && item.mass.w >= 0.28 && item.mass.h >= 0.09 && worldDims(item.mesh)[1] >= 0.06);
+    assert.ok(dash.length, "Cybercab dash misses the interior shot");
+    assertLeatherSides(root, cam, model);
+    return;
+  }
+  const piece = (name: string) => {
+    const object = root.getObjectByName(name);
+    assert.ok(object, `${model} missing ${name}`);
+    return { object: object!, mass: visibleMass(cam, object!) };
+  };
+  const screen = piece(model === "model-3" ? "highland_screen" : model === "model-y" ? "juniper_cabin_screen" : model === "cybertruck" ? "cybertruck_cabin_screen" : "heritage_screen");
+  assertOnScreen(model, "display", screen.mass, { cx: 0.45, cy: 0.42, w: 0.15, h: 0.08 });
+  if (model === "model-3") {
+    const dashes: THREE.Mesh[] = [];
+    root.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(o.material) ? o.material : [o.material];
+      if (materials.some((m) => m.name === "dashboard")) dashes.push(o);
+    });
+    const framed = dashes.filter((mesh) => {
+      const mass = visibleMass(cam, mesh);
+      return !!mass && mass.w >= 0.28 && mass.h >= 0.09 && Math.abs(mass.cx) <= 0.55 && Math.abs(mass.cy) <= 0.55 && worldDims(mesh)[1] >= 0.06;
+    });
+    assert.ok(framed.length, "Highland dash misses the interior shot");
+    assertLeatherSides(root, cam, model);
+    return;
+  }
+  const dash = piece(model === "model-y" ? "juniper_cabin_dash" : model === "cybertruck" ? "cybertruck_cabin_dash" : "heritage_dash");
+  assertOnScreen(model, "dash", dash.mass, { cx: 0.55, cy: 0.55, w: 0.28, h: 0.09 });
+  assert.ok(worldDims(dash.object)[1] >= 0.06, `${model} dash is a sliver (${worldDims(dash.object).map((n) => n.toFixed(3)).join("×")})`);
+  if (model === "model-s-heritage") {
+    const cluster = piece("heritage_cluster");
+    assertOnScreen(model, "cluster", cluster.mass, { cx: 0.5, cy: 0.4, w: 0.1, h: 0.05 });
+  }
+  if (model === "cybertruck") {
+    const yoke = piece("cybertruck_cabin_yoke");
+    const center = new THREE.Vector3();
+    yoke.object.getWorldPosition(center);
+    const distance = cam.position.distanceTo(center);
+    assert.ok(distance > 0.4 && distance < 0.75, `Cybertruck yoke is ${distance.toFixed(2)} m from the interior camera`);
+    assertOnScreen(model, "yoke", yoke.mass, { cx: 0.5, cy: 0.45, w: 0.12, h: 0.08 });
+    assert.ok(yoke.mass!.w <= 0.6, `Cybertruck yoke fills the interior shot (${yoke.mass!.w.toFixed(2)})`);
+  }
+  const leftName = model === "model-y" ? "juniper_cabin_l_cushion" : model === "cybertruck" ? "cybertruck_cabin_l_cushion" : "heritage_l_cushion";
+  const rightName = leftName.replace("_l_", "_r_");
+  const seatL = piece(leftName);
+  const seatR = piece(rightName);
+  assertOnScreen(model, leftName, seatL.mass, { cx: 0.7, cy: 0.58, w: 0.12, h: 0.18 });
+  assertOnScreen(model, rightName, seatR.mass, { cx: 0.7, cy: 0.58, w: 0.12, h: 0.18 });
+  assert.ok(seatL.mass!.cx < -0.2 && seatR.mass!.cx > 0.2, `${model} seats are not on opposite sides (${seatL.mass!.cx.toFixed(2)}, ${seatR.mass!.cx.toFixed(2)})`);
+}
 // Load the actual glTF buffers through Three.js. Textures are stubbed only for this headless geometry check.
 (globalThis as any).self = globalThis;
 (globalThis as any).ProgressEvent = class {
@@ -379,6 +517,7 @@ for (const model of ["model-3-heritage", "model-s-heritage"]) {
     const cluster = prepared.panels.fixed.getObjectByName("heritage_cluster") as THREE.Mesh;
     assert.equal(cluster.material.userData.screen, "cluster");
   }
+  assertCabinFramed(root, model as ModelId);
   const bodyKey = model === "model-3-heritage" ? "CAR_PAINT" : "material_9";
   applyExteriorPaint(prepared.materials.get(bodyKey)!, PAINT["pearl-white"]);
   assert.equal(prepared.materials.get(bodyKey)!.color.getHexString(), PAINT["pearl-white"].hex.slice(1));
@@ -457,6 +596,7 @@ for (const [model, entry] of Object.entries(authoredManifest.vehicles) as [strin
     assert.ok(instance.scene.getObjectByName("seat") && instance.scene.getObjectByName("seat_1"), "Cybercab is a two-seat cabin");
     assert.ok(names.has("dashboard") && names.has("display") && names.has("interior_leather"), "Cybercab cabin surfaces");
     assert.ok(instance.scene.getObjectByName("cybercab_dash_trim"), "Cybercab dash trim");
+    assertCabinFramed(instance.scene, "cybercab");
     const shell = [...instance.materials.values()].find((m) => m.name === "exterior_paint") as THREE.MeshPhysicalMaterial;
     applyExteriorPaint(shell, PAINT["cab-gold"]);
     assert.equal(shell.color.getHexString(), PAINT["cab-gold"].hex.slice(1));
@@ -538,6 +678,7 @@ assertLength("model-3", size.z);
   assert.equal(screen.material.userData.screen, "landscape");
   assert.ok(highland.scene.getObjectByName("highland_dash_brow"));
   assert.ok(highland.scene.getObjectByName("highland_dash_trim"));
+  assertCabinFramed(highland.scene, "model-3");
   const shell = highland.materials.get("Georimblurlfsub01Mtl|exterior_paint")!;
   applyExteriorPaint(shell, PAINT["pearl-white"]);
   assert.equal(shell.color.getHexString(), PAINT["pearl-white"].hex.slice(1));
@@ -635,6 +776,7 @@ for (const spec of [
     assert.ok(prepared.scene.getObjectByName("juniper_cabin_l_cushion"), "Juniper seats");
     assert.ok(prepared.scene.getObjectByName("juniper_cabin_dash"), "Juniper dash");
     assert.ok(prepared.scene.getObjectByName("juniper_cabin_trim"), "Juniper trim");
+    assertCabinFramed(prepared.scene, "model-y");
     const shell = [...prepared.materials.values()].find((m) => m.name === "exterior_paint")!;
     applyExteriorPaint(shell, PAINT["quicksilver"]);
     assert.equal(shell.color.getHexString(), PAINT["quicksilver"].hex.slice(1));
@@ -651,6 +793,7 @@ for (const spec of [
     assert.ok(prepared.scene.getObjectByName("cybertruck_cabin_l_cushion"), "Cybertruck seats");
     assert.ok(prepared.scene.getObjectByName("cybertruck_cabin_dash"), "Cybertruck dash");
     assert.ok(prepared.scene.getObjectByName("cybertruck_cabin_yoke"), "Cybertruck yoke");
+    assertCabinFramed(prepared.scene, "cybertruck");
     const shell = [...prepared.materials.values()].find((m) => m.name === "exterior_steel")!;
     shell.color.set(steelParams(PAINT["satin-blue"]).color);
     assert.equal(shell.color.getHexString(), PAINT["satin-blue"].hex.slice(1));
