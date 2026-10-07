@@ -71,3 +71,23 @@ Asset files were obtained from the credited copies in [Gregd713/TeslaFactory](ht
 Vehicle identity references: [Model 3](https://www.tesla.com/model3), [Model Y](https://www.tesla.com/modely), [Cybertruck](https://www.tesla.com/cybertruck). Catalog entries represent the designs in this showcase, not a claim about current availability.
 
 Tesla and model names are trademarks of Tesla, Inc. This project is not affiliated with or endorsed by Tesla.
+
+## License
+
+Copyright 2026 Anthony DiTano.
+
+Tesla Studio's own source code and original materials are licensed under the GNU General Public License, version 3 or any later version (`GPL-3.0-or-later`). The full official text is in [LICENSE](LICENSE).
+
+### Exceptions
+
+Third-party car models and assets keep their own terms. The project license does not relicense them.
+
+- Heritage Model 3 and Model S meshes by iSteven are [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). Their original `license.txt` files stay with the assets.
+- The Highland mesh by RBLXSupercars, shared by brandonleong28, is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [Highland credits](public/models/highland/CREDITS.md).
+- The Juniper mesh by BloxBloger is [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/). See [Juniper credits](public/models/juniper/CREDITS.md).
+- The Cybertruck mesh by Nieve5677 is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). See [Cybertruck credits](public/models/cybertruck-import/CREDITS.md).
+- The zwir3kk Cybercab scan is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) and is not included in this repository. The Cybercab shown in the studio is an original concept study.
+
+Tesla, the Tesla logo, and Tesla vehicle names are trademarks of Tesla, Inc. Those trademarks keep Tesla's own terms and are not granted by the GPL. This project is not affiliated with or endorsed by Tesla.
+
+Attribution for the bundled third-party meshes is also listed under [Asset credits and license](#asset-credits-and-license).
