@@ -24,6 +24,43 @@ import { BACKDROPS, lightRig } from "../src/studio/scene/backdrops";
   assert.equal(useStudio.getState().environment, "forest");
   useStudio.getState().setEnvironment("studio");
 }
+
+{
+  const memory = new Map<string, string>();
+  Object.defineProperty(globalThis, "sessionStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, String(value));
+      },
+      removeItem: (key: string) => {
+        memory.delete(key);
+      },
+    },
+  });
+  useStudio.getState().setLightsOn(false);
+  assert.equal(useStudio.getState().lightsOn, false);
+  assert.equal(sessionStorage.getItem("tesla-studio:lightsOn"), "false");
+  useStudio.getState().setModel("cybercab");
+  assert.equal(
+    useStudio.getState().lightsOn,
+    false,
+    "headlight preference must survive a vehicle switch",
+  );
+  useStudio.getState().setLightsOn(true, false);
+  assert.equal(
+    sessionStorage.getItem("tesla-studio:lightsOn"),
+    "false",
+    "demo flashes must not overwrite the stored headlight preference",
+  );
+  useStudio.getState().setLightsOn(false, false);
+  assert.equal(useStudio.getState().lightsOn, false);
+  useStudio.getState().setLightsOn(true);
+  assert.equal(sessionStorage.getItem("tesla-studio:lightsOn"), "true");
+  useStudio.getState().setModel("model-3");
+  console.log("PASS: headlight state restores across vehicle switch and reload storage");
+}
 for (const vehicle of VEHICLES) {
   useStudio.getState().setModel(vehicle.id);
   for (const variant of vehicle.variants) {

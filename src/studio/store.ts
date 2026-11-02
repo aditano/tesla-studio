@@ -10,6 +10,30 @@ import {
 import type { BackdropId } from "./scene/backdrops";
 import type { RenderQuality } from "./scene/quality";
 
+const LIGHTS_KEY = "tesla-studio:lightsOn";
+const LIGHT_BAR_KEY = "tesla-studio:lightBarOn";
+
+function readFlag(key: string, fallback: boolean): boolean {
+  if (typeof sessionStorage === "undefined") return fallback;
+  try {
+    const value = sessionStorage.getItem(key);
+    if (value === "true") return true;
+    if (value === "false") return false;
+  } catch {
+    // Private mode or blocked storage should not break the studio.
+  }
+  return fallback;
+}
+
+function writeFlag(key: string, value: boolean) {
+  if (typeof sessionStorage === "undefined") return;
+  try {
+    sessionStorage.setItem(key, String(value));
+  } catch {
+    // Ignore quota / privacy errors.
+  }
+}
+
 type StudioState = {
   environment: BackdropId;
   quality: RenderQuality;
@@ -39,8 +63,8 @@ type StudioState = {
   setHover: (id: PartId | null) => void;
   setAutoRotate: (v: boolean) => void;
   setRide: (v: number) => void;
-  setLightsOn: (v: boolean) => void;
-  setLightBarOn: (v: boolean) => void;
+  setLightsOn: (v: boolean, persist?: boolean) => void;
+  setLightBarOn: (v: boolean, persist?: boolean) => void;
   resetPose: () => void;
 };
 
@@ -61,14 +85,16 @@ export const useStudio = create<StudioState>((set, get) => ({
   hoverPart: null,
   autoRotate: false,
   ride: 0,
-  lightsOn: true,
-  lightBarOn: true,
+  lightsOn: readFlag(LIGHTS_KEY, true),
+  lightBarOn: readFlag(LIGHT_BAR_KEY, true),
   setModel: (id) => {
     const v = vehicleById(id);
     const paint =
       v.exteriors.find((p) => p.id === get().exteriorId) ?? v.exteriors[0];
     const interior =
       v.interiors.find((p) => p.id === get().interiorId) ?? v.interiors[0];
+    // Keep lamp preferences across vehicle switches; sessionStorage restores
+    // them after a full reload as well.
     set({
       modelId: id,
       demoFeature: null,
@@ -79,8 +105,6 @@ export const useStudio = create<StudioState>((set, get) => ({
       open: { ...EMPTY_OPEN },
       feature: null,
       ride: 0,
-      lightsOn: true,
-      lightBarOn: true,
     });
   },
   setVariant: (id) => {
@@ -120,8 +144,14 @@ export const useStudio = create<StudioState>((set, get) => ({
   setHover: (id) => set({ hoverPart: id }),
   setAutoRotate: (v) => set({ autoRotate: v }),
   setRide: (v) => set({ ride: v }),
-  setLightsOn: (v) => set({ lightsOn: v }),
-  setLightBarOn: (v) => set({ lightBarOn: v }),
+  setLightsOn: (v, persist = true) => {
+    if (persist) writeFlag(LIGHTS_KEY, v);
+    set({ lightsOn: v });
+  },
+  setLightBarOn: (v, persist = true) => {
+    if (persist) writeFlag(LIGHT_BAR_KEY, v);
+    set({ lightBarOn: v });
+  },
   resetPose: () =>
     set({
       open: { ...EMPTY_OPEN },

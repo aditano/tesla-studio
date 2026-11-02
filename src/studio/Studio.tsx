@@ -177,12 +177,13 @@ export function Studio() {
   useEffect(() => {
     if (s.demoFeature !== "headlights") return;
     // Flash the lamps for the demo, then hand back whatever the user had chosen.
+    // Skip persistence so a mid-demo reload keeps the real preference.
     const previous = useStudio.getState().lightsOn;
-    s.setLightsOn(false);
-    const timer = window.setTimeout(() => s.setLightsOn(true), 350);
+    s.setLightsOn(false, false);
+    const timer = window.setTimeout(() => s.setLightsOn(true, false), 350);
     return () => {
       window.clearTimeout(timer);
-      s.setLightsOn(previous);
+      s.setLightsOn(previous, false);
     };
   }, [s.demoFeature, s.setLightsOn]);
   useEffect(() => {
