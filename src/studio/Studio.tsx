@@ -262,15 +262,17 @@ export function Studio() {
         </div>
         <div className="header-actions">
           <button
+            type="button"
             className="icon-button"
             title="Help and credits"
             aria-label="Help and credits"
             onClick={() => setHelp(true)}
           >
-            <CircleHelp size={18} />
+            <CircleHelp size={18} aria-hidden="true" />
           </button>
           {document.fullscreenEnabled && (
             <button
+              type="button"
               className="icon-button fullscreen"
               title={fullscreen ? "Exit fullscreen" : "Fullscreen"}
               aria-label={fullscreen ? "Exit fullscreen" : "Enter fullscreen"}
@@ -284,7 +286,11 @@ export function Studio() {
                     .catch(() => {});
               }}
             >
-              {fullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+              {fullscreen ? (
+                <Minimize size={18} aria-hidden="true" />
+              ) : (
+                <Maximize size={18} aria-hidden="true" />
+              )}
             </button>
           )}
         </div>
@@ -325,6 +331,7 @@ export function Studio() {
       </section>
       <div className="stage-tools">
         <button
+          type="button"
           className={`tool-pill ${s.autoRotate ? "active" : ""}`}
           aria-pressed={s.autoRotate}
           onClick={() => {
@@ -333,17 +340,22 @@ export function Studio() {
             s.setAutoRotate(!s.autoRotate);
           }}
         >
-          {s.autoRotate ? <Pause size={14} /> : <Play size={14} />}
+          {s.autoRotate ? (
+            <Pause size={14} aria-hidden="true" />
+          ) : (
+            <Play size={14} aria-hidden="true" />
+          )}
           <span>Orbit</span>
         </button>
         <button
+          type="button"
           className="tool-pill"
           onClick={() => {
             setTour(false);
             s.resetPose();
           }}
         >
-          <RotateCcw size={14} />
+          <RotateCcw size={14} aria-hidden="true" />
           <span>Reset view</span>
         </button>
         <span className="orbit-hint">Drag to rotate · Scroll to zoom</span>
@@ -388,12 +400,33 @@ export function Studio() {
         >
           <span />
         </button>
-        <div className="panel-tabs" role="tablist" aria-label="Studio controls">
+        <div
+          className="panel-tabs"
+          role="tablist"
+          aria-label="Studio controls"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const tabs = ["configure", "explore"] as const;
+            const index = tabs.indexOf(panel);
+            const next =
+              tabs[
+                e.key === "ArrowRight"
+                  ? (index + 1) % tabs.length
+                  : (index - 1 + tabs.length) % tabs.length
+              ];
+            setPanel(next);
+            setSheet(true);
+            document.getElementById(`${next}-tab`)?.focus();
+          }}
+        >
           <button
+            type="button"
             role="tab"
             id="configure-tab"
             aria-controls="configure-panel"
             aria-selected={panel === "configure"}
+            tabIndex={panel === "configure" ? 0 : -1}
             onClick={() => {
               setPanel("configure");
               setSheet(true);
@@ -402,10 +435,12 @@ export function Studio() {
             Configure
           </button>
           <button
+            type="button"
             role="tab"
             id="explore-tab"
             aria-controls="explore-panel"
             aria-selected={panel === "explore"}
+            tabIndex={panel === "explore" ? 0 : -1}
             onClick={() => {
               setPanel("explore");
               setSheet(true);
@@ -573,8 +608,10 @@ export function Studio() {
             </div>
             <div className="lamp-toggle">
               <button
+                type="button"
                 className={s.lightsOn ? "selected" : ""}
                 aria-pressed={s.lightsOn}
+                aria-label={`Headlights ${s.lightsOn ? "on" : "off"}`}
                 onClick={() => s.setLightsOn(!s.lightsOn)}
               >
                 Headlights {s.lightsOn ? "on" : "off"}
@@ -613,12 +650,13 @@ export function Studio() {
           >
             {!lost && (
               <button
+                type="button"
                 autoFocus
                 className="icon-button close-modal"
                 aria-label="Close help"
                 onClick={() => setHelp(false)}
               >
-                <X size={20} />
+                <X size={20} aria-hidden="true" />
               </button>
             )}
             <p className="eyebrow">TESLA STUDIO</p>
