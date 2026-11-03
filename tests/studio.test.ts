@@ -24,6 +24,43 @@ import { BACKDROPS, lightRig } from "../src/studio/scene/backdrops";
   assert.equal(useStudio.getState().environment, "forest");
   useStudio.getState().setEnvironment("studio");
 }
+
+{
+  const memory = new Map<string, string>();
+  Object.defineProperty(globalThis, "sessionStorage", {
+    configurable: true,
+    value: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, String(value));
+      },
+      removeItem: (key: string) => {
+        memory.delete(key);
+      },
+    },
+  });
+  useStudio.getState().setLightsOn(false);
+  assert.equal(useStudio.getState().lightsOn, false);
+  assert.equal(sessionStorage.getItem("tesla-studio:lightsOn"), "false");
+  useStudio.getState().setModel("cybercab");
+  assert.equal(
+    useStudio.getState().lightsOn,
+    false,
+    "headlight preference must survive a vehicle switch",
+  );
+  useStudio.getState().setLightsOn(true, false);
+  assert.equal(
+    sessionStorage.getItem("tesla-studio:lightsOn"),
+    "false",
+    "demo flashes must not overwrite the stored headlight preference",
+  );
+  useStudio.getState().setLightsOn(false, false);
+  assert.equal(useStudio.getState().lightsOn, false);
+  useStudio.getState().setLightsOn(true);
+  assert.equal(sessionStorage.getItem("tesla-studio:lightsOn"), "true");
+  useStudio.getState().setModel("model-3");
+  console.log("PASS: headlight state restores across vehicle switch and reload storage");
+}
 for (const vehicle of VEHICLES) {
   useStudio.getState().setModel(vehicle.id);
   for (const variant of vehicle.variants) {
@@ -533,6 +570,7 @@ const {
   GLTFLoader: RuntimeGLTFLoader
 } = await import('three-stdlib');
 const {
+  attachCybercabDoorTrim,
   cloneAuthored
 } = await import('../src/studio/vehicles/AuthoredVehicle');
 const decoder = typeof MeshoptDecoder === 'function' ? MeshoptDecoder() : MeshoptDecoder;
@@ -604,6 +642,39 @@ for (const [model, entry] of Object.entries(authoredManifest.vehicles) as [strin
     assert.notEqual(shell.color.getHexString(), PAINT["cab-gold"].hex.slice(1));
     assert.equal(shell.color.getHexString(), PAINT["cab-white"].hex.slice(1));
     assertUpholstery("Cybercab", [...instance.materials.values()].filter((m) => m.name === "interior_leather"));
+
+    // Door trim must clone before editing: scene.clone() shares BufferGeometry
+    // with the useGLTF cache, and mutating that index corrupts later mounts.
+    const sharedTrim = (() => {
+      let found: THREE.Mesh | null = null;
+      loaded.scene.traverse((o) => {
+        if (found || !(o instanceof THREE.Mesh)) return;
+        if ((o.material as THREE.Material).name === "satin_trim") found = o;
+      });
+      return found!;
+    })();
+    const cachedIndex = Array.from(sharedTrim.geometry.getIndex()!.array);
+    const body = instance.scene.getObjectByName("body")!;
+    const release = attachCybercabDoorTrim(body, {
+      left: instance.scene.getObjectByName("door_fl"),
+      right: instance.scene.getObjectByName("door_fr"),
+      paint: shell,
+    });
+    assert.ok(
+      instance.scene.getObjectByName("cab_door_trim"),
+      "Cybercab door trim moves onto the door",
+    );
+    assert.deepEqual(
+      Array.from(sharedTrim.geometry.getIndex()!.array),
+      cachedIndex,
+      "Cybercab door trim must not mutate cached shared geometry",
+    );
+    release();
+    assert.deepEqual(
+      Array.from(sharedTrim.geometry.getIndex()!.array),
+      cachedIndex,
+      "Cybercab door trim cleanup leaves the cache untouched",
+    );
   }
   instance.materials.forEach(m => m.dispose());
   console.log(`PASS: ${model}, compressed decode, ${triangles.toLocaleString()} triangles, ${meshes} meshes, named hinges and opening directions`);

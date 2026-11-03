@@ -57,6 +57,108 @@ export function cloneAuthored(source: THREE.Group) {
   return { scene, materials };
 }
 
+/** Rehome Cybercab beltline/seal tris onto the doors without mutating shared
+ * cached GLTF geometry. Scene clones share BufferGeometry, so every index
+ * edit must happen on a clone. */
+export function attachCybercabDoorTrim(
+  body: THREE.Object3D,
+  doors: {
+    left?: THREE.Object3D | null;
+    right?: THREE.Object3D | null;
+    paint?: THREE.Material;
+  },
+) {
+  const moved: THREE.Mesh[] = [];
+  const restore: [THREE.Mesh, THREE.BufferGeometry][] = [];
+  const sills: THREE.Mesh[] = [];
+  const trims = body.children.filter(
+    (child): child is THREE.Mesh =>
+      child instanceof THREE.Mesh &&
+      (((child.material as THREE.Material).name === "satin_trim") ||
+        (child.material as THREE.Material).name === "panel_seal"),
+  );
+
+  body.updateWorldMatrix(true, true);
+  for (const child of trims) {
+    const sourceGeom = child.geometry;
+    const index = sourceGeom.getIndex();
+    const pos = sourceGeom.getAttribute("position");
+    if (!index) continue;
+
+    const keep: number[] = [];
+    const takeLeft: number[] = [];
+    const takeRight: number[] = [];
+    const v = new THREE.Vector3();
+    for (let i = 0; i < index.count; i += 3) {
+      let x = 0,
+        y = 0,
+        z = 0;
+      for (let k = 0; k < 3; k++) {
+        v.fromBufferAttribute(pos, index.getX(i + k)).applyMatrix4(child.matrix);
+        x += v.x / 3;
+        y += v.y / 3;
+        z += v.z / 3;
+      }
+      const onBelt = y > 0.3 && y < 1.02 && z > -0.8 && z < 0.95;
+      const tri = [index.getX(i), index.getX(i + 1), index.getX(i + 2)];
+      if (onBelt && x > 0.8) takeRight.push(...tri);
+      else if (onBelt && x < -0.8) takeLeft.push(...tri);
+      else keep.push(...tri);
+    }
+    if (!takeLeft.length && !takeRight.length) continue;
+
+    // Clone before any index edit so the useGLTF cache stays pristine.
+    restore.push([child, sourceGeom]);
+    const bodyGeom = sourceGeom.clone();
+    bodyGeom.setIndex(keep);
+    child.geometry = bodyGeom;
+
+    for (const [take, door] of [
+      [takeLeft, doors.left],
+      [takeRight, doors.right],
+    ] as const) {
+      if (!take.length || !door) continue;
+      const toDoor = door.matrixWorld.clone().invert();
+      const pieceGeom = sourceGeom.clone();
+      pieceGeom.setIndex(take);
+      pieceGeom.applyMatrix4(
+        new THREE.Matrix4().multiplyMatrices(toDoor, child.matrixWorld),
+      );
+      const piece = new THREE.Mesh(pieceGeom, child.material);
+      piece.name = "cab_door_trim";
+      piece.castShadow = piece.receiveShadow = true;
+      door.add(piece);
+      moved.push(piece);
+    }
+  }
+
+  if (doors.paint)
+    for (const side of [-1, 1]) {
+      const sill = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, 1.62), doors.paint);
+      sill.position.set(side * 0.8, 0.31, 0.07);
+      sill.name = "cab_sill";
+      sill.castShadow = sill.receiveShadow = true;
+      body.add(sill);
+      sills.push(sill);
+    }
+
+  return () => {
+    moved.forEach((m) => {
+      m.removeFromParent();
+      m.geometry.dispose();
+    });
+    restore.forEach(([mesh, geom]) => {
+      const current = mesh.geometry;
+      mesh.geometry = geom;
+      if (current !== geom) current.dispose();
+    });
+    sills.forEach((m) => {
+      m.removeFromParent();
+      m.geometry.dispose();
+    });
+  };
+}
+
 export function AuthoredVehicle({
   model,
   paint,
@@ -375,68 +477,12 @@ export function AuthoredVehicle({
   // painted sill so the opening has a floor edge.
   useEffect(() => {
     if (model !== "cybercab" || !rig.body) return;
-    const moved: THREE.Mesh[] = [];
-    const restore: [THREE.Mesh, THREE.BufferAttribute | null][] = [];
-    for (const side of [-1, 1] as const) {
-      const door = rig[side < 0 ? "door_fl" : "door_fr"];
-      if (!door) continue;
-      rig.body.updateWorldMatrix(true, true);
-      const toDoor = door.matrixWorld.clone().invert();
-      rig.body.children.forEach((child) => {
-        if (!(child instanceof THREE.Mesh)) return;
-        const name = (child.material as THREE.Material).name;
-        if (name !== "satin_trim" && name !== "panel_seal") return;
-        const index = child.geometry.getIndex();
-        const pos = child.geometry.getAttribute("position");
-        if (!index) return;
-        const keep: number[] = [];
-        const take: number[] = [];
-        const v = new THREE.Vector3();
-        for (let i = 0; i < index.count; i += 3) {
-          let x = 0, y = 0, z = 0;
-          for (let k = 0; k < 3; k++) {
-            v.fromBufferAttribute(pos, index.getX(i + k)).applyMatrix4(child.matrix);
-            x += v.x / 3; y += v.y / 3; z += v.z / 3;
-          }
-          const onDoor = side * x > 0.8 && y > 0.3 && y < 1.02 && z > -0.8 && z < 0.95;
-          (onDoor ? take : keep).push(index.getX(i), index.getX(i + 1), index.getX(i + 2));
-        }
-        if (!take.length) return;
-        restore.push([child, index]);
-        child.geometry.setIndex(keep);
-        const piece = new THREE.Mesh(child.geometry.clone(), child.material);
-        piece.geometry.setIndex(take);
-        piece.geometry.applyMatrix4(
-          new THREE.Matrix4().multiplyMatrices(toDoor, child.matrixWorld),
-        );
-        piece.name = "cab_door_trim";
-        piece.castShadow = piece.receiveShadow = true;
-        door.add(piece);
-        moved.push(piece);
-      });
-    }
     const paint = [...instance.materials.values()].find((m) => m.name === "exterior_paint");
-    const sills: THREE.Mesh[] = [];
-    if (paint)
-      for (const side of [-1, 1]) {
-        const sill = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, 1.62), paint);
-        sill.position.set(side * 0.8, 0.31, 0.07);
-        sill.name = "cab_sill";
-        sill.castShadow = sill.receiveShadow = true;
-        rig.body.add(sill);
-        sills.push(sill);
-      }
-    return () => {
-      moved.forEach((m) => {
-        m.removeFromParent();
-        m.geometry.dispose();
-      });
-      restore.forEach(([mesh, index]) => mesh.geometry.setIndex(index));
-      sills.forEach((m) => {
-        m.removeFromParent();
-        m.geometry.dispose();
-      });
-    };
+    return attachCybercabDoorTrim(rig.body, {
+      left: rig.door_fl,
+      right: rig.door_fr,
+      paint,
+    });
   }, [model, rig, instance]);
   const click = (event: ThreeEvent<MouseEvent>) => {
     if (staticBody) return;
